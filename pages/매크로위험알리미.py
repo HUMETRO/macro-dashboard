@@ -43,7 +43,7 @@ with st.spinner("⏳ 야후 파이낸스에서 3년치 데이터를 가져오는
     df_core = calculate_core_sector_scores(all_data['core_sectors'])
 
 if df_sectors is None or df_sectors.empty:
-    st.error("🚨 데이터를 불러오지 못했습니다. 사이드바의 새로고침을 눌러주세요.")
+    st.error("🚨 데이터를 불러오지 못했습니다.")
     st.stop() 
 
 # [5] 메인 시장 상태 지표
@@ -63,21 +63,19 @@ with col3:
     else:
         st.warning("⚠️ 관망 (방향 탐색)")
 
-st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.")
-
-# 조기경보 시스템 (원본 문구 유지)
+# [6] 조기경보 시스템 (공간 효율화)
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
 
 if safe_count >= 2:
-    st.error(f"🚨 **안전 자산 쏠림 경보 발령!** 현재 상위 5개 중 {safe_count}개가 방어적 자산입니다. 스마트머니가 피난 중입니다. 관망하십시오!")
+    st.error(f"🚨 **안전자산 쏠림 경보!** 상위 5개 중 {safe_count}개가 방어적 자산입니다. 관망하십시오!")
 elif safe_count == 1:
-    st.warning("⚠️ **안전자산 상승 주의:** 상위 5위권 내에 방어적 자산이 포착되었습니다.")
+    st.warning("⚠️ **안전자산 상승 주의:** 상위권 내에 방어적 자산이 포착되었습니다.")
 
 st.markdown("---")
 
-# [6] 3개 탭 구성
+# [7] 3개 탭 구성
 tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개 핵심 섹터"])
 
 # === 탭1: 섹터 ETF ===
@@ -96,27 +94,29 @@ with tab1:
         df_sectors.style
             .apply(highlight_benchmarks, axis=1)
             .background_gradient(cmap='RdYlGn', subset=['L-score', 'S-score', 'S-L', '20일(%)'])
-            .format({
-                'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'
-            }),
-        use_container_width=True, height=600
+            .format({'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'}),
+        use_container_width=True, height=500
     )
     
-    # 💡 [스코어 상세 설명 보강]
-    st.markdown("##### 💡 퀀트 지표 핵심 요약")
-    col_exp1, col_exp2 = st.columns(2)
-    with col_exp1:
-        st.caption("**📊 L-score (장기 체력)**: 200일선 이격도, 52주 고점 위치 등을 종합한 장기 추세 점수입니다.")
-    with col_exp2:
-        st.caption("**🚀 S-score (단기 기세)**: 20일선 이격도, 1개월 수익률 등을 종합한 단기 모멘텀 점수입니다.")
-    
-    st.caption("1️⃣ **S-L (추세 가속도):** 단기 기세가 장기 체력을 앞지르는 강도를 뜻합니다. 초록색일수록 에너지 응축 신호입니다.")
-    st.caption("2️⃣ **미너비니 필터:** S-score가 마이너스면 '역배열 하락'으로 간주하여 순위에서 강등시킵니다.")
-    st.caption("3️⃣ **20일(%):** 최근 1개월간 실제 수익률 성적표입니다.")
+    # 💡 [접이식 상세 설명 도입]
+    with st.expander("🔍 퀀트 지표 및 미너비니 필터 상세 설명 (클릭)"):
+        col_exp1, col_exp2 = st.columns(2)
+        with col_exp1:
+            st.markdown("**📊 L-score (장기 체력)**")
+            st.caption("200일선 이격도, 52주 고점 위치 등을 종합한 장기 추세 점수입니다.")
+        with col_exp2:
+            st.markdown("**🚀 S-score (단기 기세)**")
+            st.caption("20일선 이격도, 1개월 수익률 등을 종합한 단기 모멘텀 점수입니다.")
+        
+        st.divider()
+        st.markdown("**1️⃣ S-L (추세 가속도)**")
+        st.caption("단기 기세가 장기 체력을 얼마나 앞지르고 있는지를 보여줍니다. 값이 클수록 최근 에너지가 맹렬하게 응축되고 있다는 신호입니다.")
+        st.markdown("**2️⃣ 미너비니 절대 추세 필터 (랭킹 보정)**")
+        st.caption("아무리 S-L 값이 커도, 현재 단기 추세(S-score) 자체가 마이너스(-)인 섹터는 '하락 추세 속의 일시적 반등'일 뿐입니다. 이런 '떨어지는 칼날'은 가짜 신호로 간주하여 순위표 최하위권으로 강제 강등시켰습니다.")
 
 # === 탭2: 개별 종목 ===
 with tab2:
-    st.subheader("💹 개별 종목 추적 (위험도별 분류)")
+    st.subheader("💹 개별 종목 추적")
     def highlight_risk(row):
         ticker = row['티커']
         if ticker in ['VOO', 'QQQ', 'AAPL', 'MSFT', 'GOOG', 'AMZN', 'AVGO']:
@@ -129,12 +129,10 @@ with tab2:
         df_individual.style
             .apply(highlight_risk, axis=1)
             .background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비', '52저대비'], vmin=-10, vmax=10)
-            .format({
-                '현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'
-            }, na_rep="N/A"),
-        use_container_width=True, height=600
+            .format({'현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'}),
+        use_container_width=True, height=500
     )
-    st.caption("💡 **배경색 의미:** 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
+    st.caption("💡 🟩 코어 우량주 / 🟨 위성 자산 / 🟥 레버리지 및 고변동성")
 
 # === 탭3: 11개 핵심 섹터 ===
 with tab3:
@@ -146,12 +144,11 @@ with tab3:
         grad_subset.append('20일(%)')
 
     st.dataframe(
-        df_core.style.background_gradient(cmap='RdYlGn', subset=grad_subset)
-        .format(format_dict), 
+        df_core.style.background_gradient(cmap='RdYlGn', subset=grad_subset).format(format_dict), 
         use_container_width=True
     )
 
-# === [7] 개별 차트 ===
+# === [8] 개별 차트 ===
 st.markdown("---")
 st.subheader("📉 개별 섹터 히스토리 차트")
 selected = st.selectbox("섹터 선택", list(all_data['sector_etfs'].keys()))

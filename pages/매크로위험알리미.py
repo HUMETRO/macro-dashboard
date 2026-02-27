@@ -65,13 +65,13 @@ with col3:
 
 st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.") [cite: 2026-02-22]
 
-# 조기경보 시스템
+# 조기경보 시스템 원문 유지
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
 
 if safe_count >= 2:
-    st.error(f"🚨 **안전 자산 쏠림 경보 발령!** 현재 상위 5개 중 {safe_count}개가 방어적 자산입니다. 스마트머니가 피난 중입니다. 관망하십시오!")
+    st.error(f"🚨 **안전자산 쏠림 경보 발령!** 현재 상위 5개 중 {safe_count}개가 방어적 자산입니다. 스마트머니가 피난 중입니다. 관망하십시오!")
 elif safe_count == 1:
     st.warning("⚠️ **안전자산 상승 주의:** 상위 5위권 내에 방어적 자산이 포착되었습니다.")
 
@@ -118,7 +118,7 @@ with tab2:
             return ['background-color: #f8cbad; color: #833c0c; font-weight: bold'] * len(row) 
         return [''] * len(row)
 
-    # [수정 완료] 52저대비에 % 기호 추가
+    # [수정] 52저대비 % 단위 및 소수점 한 자리 마감
     st.dataframe(
         df_individual.style
             .apply(highlight_risk, axis=1)
@@ -129,7 +129,7 @@ with tab2:
                 'high대비': '{:.1f}%', 
                 '200대비': '{:.1f}%', 
                 '전일대비': '{:.1f}%',
-                '52저대비': '{:.1f}%'  # <-- 이제 % 기호가 붙어 나옵니다!
+                '52저대비': '{:.1f}%' 
             }, na_rep="N/A"),
         use_container_width=True, height=600
     )

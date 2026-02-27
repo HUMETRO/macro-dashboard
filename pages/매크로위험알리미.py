@@ -63,9 +63,9 @@ with col3:
     else:
         st.warning("⚠️ 관망 (방향 탐색)")
 
-st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.") [cite: 2026-02-22]
+st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.")
 
-# 💡 [안전자산 쏠림 조기경보 시스템 원문 100% 복구]
+# 💡 [안전자산 쏠림 조기경보 시스템 원문 복구]
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
@@ -96,11 +96,12 @@ with tab1:
         df_sectors.style
             .apply(highlight_benchmarks, axis=1)
             .background_gradient(cmap='RdYlGn', subset=['L-score', 'S-score', 'S-L', '20일(%)'])
-            .format({'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'}),
+            .format({
+                'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'
+            }),
         use_container_width=True, height=600
     )
     
-    # 💡 [설명 문구 보강 및 원문 유지]
     st.markdown("##### 💡 퀀트 지표 핵심 요약")
     col_exp1, col_exp2 = st.columns(2)
     with col_exp1:
@@ -128,7 +129,9 @@ with tab2:
         df_individual.style
             .apply(highlight_risk, axis=1)
             .background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비', '52저대비'], vmin=-10, vmax=10)
-            .format({'현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'}),
+            .format({
+                '현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'
+            }, na_rep="N/A"),
         use_container_width=True, height=600
     )
     st.caption("💡 **배경색 의미:** 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
@@ -143,15 +146,17 @@ with tab3:
         grad_subset.append('20일(%)')
 
     st.dataframe(
-        df_core.style.background_gradient(cmap='RdYlGn', subset=grad_subset).format(format_dict), 
+        df_core.style.background_gradient(cmap='RdYlGn', subset=grad_subset)
+        .format(format_dict), 
         use_container_width=True
     )
     st.caption("💡 S&P 500의 11개 표준 섹터를 통해 시장의 주도 테마를 읽으십시오.")
 
-# === [8] 개별 차트 ===
+# === [7] 개별 차트 ===
 st.markdown("---")
 st.subheader("📉 개별 섹터 히스토리 차트")
-selected = st.selectbox("섹터 선택", list(all_data['sector_etfs'].keys()))
+all_sector_keys = list(all_data['sector_etfs'].keys())
+selected = st.selectbox("섹터 선택", all_sector_keys)
 
 if selected:
     hist = all_data['sector_etfs'][selected]['history']
@@ -164,8 +169,4 @@ if selected:
     
     view_days = min(len(hist), 500)
     fig.update_layout(
-        title=f"{selected} ({ticker}) 분석 차트",
-        xaxis_range=[hist.index[-view_days], hist.index[-1]],
-        template="plotly_white", height=550, hovermode="x unified"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+        title=f"{selected

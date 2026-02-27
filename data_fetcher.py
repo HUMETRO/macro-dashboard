@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 
 def get_all_market_data():
-    """모든 시장 데이터를 3개 그룹으로 수집"""
+    """모든 시장 데이터를 3개 그룹으로 수집 (200일선 확보를 위해 2년치 수집)"""
     
     sector_etfs = {
         '금속광산': 'XME', '반도체': 'SOXX', '소비': 'XLB', '에너지': 'XLE',
@@ -23,7 +23,7 @@ def get_all_market_data():
         'MAGS': 'MAGS', 'BULZ': 'BULZ', 'SPMO': 'SPMO', 'VGT': 'VGT', 'IBIT': 'IBIT',
         'AAPL': 'AAPL', 'MSFT': 'MSFT', 'NVDA': 'NVDA', 'GOOG': 'GOOG', 'AMZN': 'AMZN', 
         'META': 'META', 'TSLA': 'TSLA', 'TSMC': 'TSM', 'AVGO': 'AVGO', 'BRK.B': 'BRK-B', 
-        '환율': 'KRW=X', 'VIX': '^VIX'  # 💡 환율 티커를 달러 인덱스(UUP)에서 원/달러(KRW=X)로 완벽 교체!
+        '환율': 'KRW=X', 'VIX': '^VIX' 
     }
     
     core_sectors = {
@@ -40,19 +40,20 @@ def get_all_market_data():
     }
 
 def _fetch_data(tickers_dict):
-    """티커 데이터 가져오기 (절대 죽지 않는 방어적 코딩)"""
+    """티커 데이터 가져오기 (기간을 2y로 늘려 MA200을 완벽히 계산)"""
     data = {}
     current_year = datetime.now().year
     
     for name, ticker in tickers_dict.items():
         try:
             stock = yf.Ticker(ticker)
-            hist = stock.history(period='1y')
+            # [핵심 수정] 1y -> 2y로 변경하여 차트 시작점부터 200일선이 나오게 합니다.
+            hist = stock.history(period='2y')
             
             if hist.empty:
                 continue
             
-            # 날짜 인덱스를 표준화하고 시간대(tz)를 안전하게 제거
+            # 날짜 인덱스 표준화
             hist.index = pd.to_datetime(hist.index)
             if hist.index.tz is not None:
                 hist.index = hist.index.tz_localize(None)
@@ -66,7 +67,7 @@ def _fetch_data(tickers_dict):
             high_52w = hist['Close'].max()
             low_52w = hist['Close'].min()
             
-            # Pandas의 안전한 연도(Year) 필터링 사용
+            # YTD 계산
             hist_ytd = hist[hist.index.year == current_year]
             ytd_start_price = hist_ytd['Close'].iloc[0] if not hist_ytd.empty else hist['Close'].iloc[0]
             
@@ -77,10 +78,11 @@ def _fetch_data(tickers_dict):
                 'ytd_start': float(ytd_start_price),
                 'high_52w': float(high_52w),
                 'low_52w': float(low_52w),
-                'ma200': float(hist['MA200'].iloc[-1]) if len(hist) >= 200 else np.nan,
+                # MA200이 2y 데이터를 가져왔으므로 이제 안전하게 계산됩니다.
+                'ma200': float(hist['MA200'].iloc[-1]) if not pd.isna(hist['MA200'].iloc[-1]) else np.nan,
                 'history': hist
             }
         except Exception as e:
-            print(f"❌ {name} ({ticker}) 가져오기 실패 원인: {e}")
-            
+            print(f"❌ {name} ({ticker}) 가져오기 실패: {e}")
+
     return data

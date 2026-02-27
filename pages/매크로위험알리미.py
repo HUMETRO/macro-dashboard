@@ -5,7 +5,7 @@ import sys
 import os
 import numpy as np
 
-# [1] 경로 설정: 상위 폴더의 부품 로드용
+# [1] 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
@@ -29,7 +29,7 @@ with st.sidebar:
     st.info("💡 미국 섹터 ETF의 장단기 스코어를 분석합니다")
     if st.button("🔄 데이터 새로고침"):
         st.cache_data.clear()
-        st.success("캐시가 삭제되었습니다! 3년치 데이터를 새로 로딩합니다.")
+        st.success("캐시가 삭제되었습니다!")
 
 # [4] 데이터 로딩
 @st.cache_data(ttl=300)
@@ -46,7 +46,7 @@ if df_sectors is None or df_sectors.empty:
     st.error("🚨 데이터를 불러오지 못했습니다. 사이드바의 새로고침을 눌러주세요.")
     st.stop() 
 
-# [5] 메인 시장 상태 지표 (원본의 싹싹한 가이드 복구)
+# [5] 메인 시장 상태 지표
 col1, col2, col3 = st.columns(3)
 avg_l = df_sectors['L-score'].mean()
 avg_s = df_sectors['S-score'].mean()
@@ -63,17 +63,17 @@ with col3:
     else:
         st.warning("⚠️ 관망 (방향 탐색)")
 
-st.caption("💡 **시장 상태 판별 기준:** 30개 전체 섹터의 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려(위험)'**, 그 외는 **'관망'**으로 표시됩니다. 감정에 휘둘리지 말고 객관적인 숫자를 믿으십시오.")
+st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.") [cite: 2026-02-22]
 
-# 💡 [안전자산 쏠림 조기경보 시스템 원문 복구]
+# 조기경보 시스템
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
 
 if safe_count >= 2:
-    st.error(f"🚨 **안전자산 쏠림 경보 발령!** 현재 상위 5개 섹터 중 {safe_count}개가 방어적 자산입니다. 시장의 스마트머니가 위험을 피해 피난하고 있습니다. 주식 비중 확대를 멈추고 관망하십시오!")
+    st.error(f"🚨 **안전 자산 쏠림 경보 발령!** 현재 상위 5개 중 {safe_count}개가 방어적 자산입니다. 스마트머니가 피난 중입니다. 관망하십시오!")
 elif safe_count == 1:
-    st.warning("⚠️ **안전자산 상승 주의:** 상위 5위권 내에 방어적 자산이 포착되었습니다. 시장의 변동성에 대비하십시오.")
+    st.warning("⚠️ **안전자산 상승 주의:** 상위 5위권 내에 방어적 자산이 포착되었습니다.")
 
 st.markdown("---")
 
@@ -92,23 +92,20 @@ with tab1:
             return ['background-color: #e2efda; color: #385723; font-weight: bold'] * len(row)
         return [''] * len(row)
 
-    subset_cols = ['L-score', 'S-score', 'S-L', '20일(%)']
-    
     st.dataframe(
         df_sectors.style
             .apply(highlight_benchmarks, axis=1)
-            .background_gradient(cmap='RdYlGn', subset=subset_cols)
+            .background_gradient(cmap='RdYlGn', subset=['L-score', 'S-score', 'S-L', '20일(%)'])
             .format({
                 'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'
             }),
         use_container_width=True, height=600
     )
     
-    # 💡 [퀀트 지표 핵심 요약 원문 복구]
     st.markdown("##### 💡 퀀트 지표 핵심 요약")
-    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록(초록색) 과거보다 최근 한 달 사이에 돈이 훨씬 더 맹렬하게 몰리고 있음을 뜻합니다.")
-    st.caption("2️⃣ **미너비니 절대 추세 필터 (랭킹 보정):** 아무리 S-L 값이 커도, 현재 단기 추세(S-score) 자체가 마이너스(-)인 '떨어지는 칼날' 종목은 가짜 반등(기저효과)으로 간주하여 순위표 최하위권으로 강등시켰습니다.")
-    st.caption("3️⃣ **20일(%):** 최근 1개월(약 20거래일) 동안 실제로 내 계좌에 꽂힌 '진짜 수익률 성적표'입니다. S-L 순위와 20일 수익률이 동반 상승하는 섹터가 시장의 진짜 주도주입니다.")
+    st.caption("1️⃣ **S-L:** 추세 가속도. 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
+    st.caption("2️⃣ **미너비니 필터:** 단기 추세(S)가 마이너스면 순위에서 강등시킵니다.")
+    st.caption("3️⃣ **20일(%):** 최근 1개월간의 실제 수익률 성적표입니다.")
 
 # === 탭2: 개별 종목 ===
 with tab2:
@@ -121,17 +118,22 @@ with tab2:
             return ['background-color: #f8cbad; color: #833c0c; font-weight: bold'] * len(row) 
         return [''] * len(row)
 
+    # [수정 완료] 52저대비에 % 기호 추가
     st.dataframe(
         df_individual.style
             .apply(highlight_risk, axis=1)
-            .background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비'], vmin=-10, vmax=10)
+            .background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비', '52저대비'], vmin=-10, vmax=10)
             .format({
-                '현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%'
+                '현재가': '{:.2f}', 
+                '연초대비': '{:.1f}%', 
+                'high대비': '{:.1f}%', 
+                '200대비': '{:.1f}%', 
+                '전일대비': '{:.1f}%',
+                '52저대비': '{:.1f}%'  # <-- 이제 % 기호가 붙어 나옵니다!
             }, na_rep="N/A"),
         use_container_width=True, height=600
     )
-    # 💡 [배경색 의미 가이드 복구]
-    st.caption("💡 **배경색 의미:** 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
+    st.caption("💡 **배경색 의미:** 🟩 코어 우량주 / 🟨 위성 자산 / 🟥 레버리지 및 고변동성")
 
 # === 탭3: 11개 핵심 섹터 ===
 with tab3:
@@ -142,7 +144,7 @@ with tab3:
         use_container_width=True
     )
 
-# === [7] 개별 차트 (200일선 완벽 표시 & 표시 범위 최적화) ===
+# === [7] 개별 차트 ===
 st.markdown("---")
 st.subheader("📉 개별 섹터 히스토리 차트")
 selected = st.selectbox("섹터 선택", list(all_data['sector_etfs'].keys()))
@@ -156,7 +158,6 @@ if selected:
     fig.add_trace(go.Scatter(x=hist.index, y=hist['MA20'], name='MA20', line=dict(dash='dash', color='orange')))
     fig.add_trace(go.Scatter(x=hist.index, y=hist['MA200'], name='MA200', line=dict(dash='dot', color='green')))
     
-    # [핵심] 3년 데이터를 가져왔으므로 최근 2년(500일)을 보여주면 MA200이 차트 왼쪽 끝까지 꽉 차게 나옵니다.
     view_days = min(len(hist), 500)
     fig.update_layout(
         title=f"{selected} ({ticker}) 분석 차트",

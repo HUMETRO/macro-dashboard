@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import sys
 import os
 
-# [강력 처방] 상위 폴더 경로 설정
+# 상위 폴더 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
@@ -72,3 +72,5 @@ st.markdown("---")
 tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개 핵심 섹터"])
 
 with tab1:
+    st.subheader("📈 섹터 ETF 스코어")
+    subset_cols = ['L-score', 'S-score', 'S-L', '20일(%)']

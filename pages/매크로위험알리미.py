@@ -43,7 +43,7 @@ with st.spinner("⏳ 야후 파이낸스에서 3년치 데이터를 가져오는
     df_core = calculate_core_sector_scores(all_data['core_sectors'])
 
 if df_sectors is None or df_sectors.empty:
-    st.error("🚨 데이터를 불러오지 못했습니다. 사이드바의 새로고침을 눌러주세요.")
+    st.error("🚨 데이터를 불러오지 못했습니다.")
     st.stop() 
 
 # [5] 메인 시장 상태 지표
@@ -63,9 +63,9 @@ with col3:
     else:
         st.warning("⚠️ 관망 (방향 탐색)")
 
-st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.")
+st.caption("💡 시장 상태 판별 기준: 전체 평균 장기/단기 스코어가 모두 0보다 크면 '매수', 모두 0보다 작으면 '버려', 그 외는 '관망'입니다. 객관적인 숫자를 믿으십시오.")
 
-# 💡 [안전자산 쏠림 조기경보 시스템 원문 복구]
+# [6] 조기경보 시스템 (원문 100% 복구)
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
@@ -77,10 +77,9 @@ elif safe_count == 1:
 
 st.markdown("---")
 
-# [6] 3개 탭 구성
+# [7] 3개 탭 구성
 tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개 핵심 섹터"])
 
-# === 탭1: 섹터 ETF ===
 with tab1:
     st.subheader("📈 섹터 ETF 스코어 (S-L 순위)")
     
@@ -93,12 +92,9 @@ with tab1:
         return [''] * len(row)
 
     st.dataframe(
-        df_sectors.style
-            .apply(highlight_benchmarks, axis=1)
-            .background_gradient(cmap='RdYlGn', subset=['L-score', 'S-score', 'S-L', '20일(%)'])
-            .format({
-                'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'
-            }),
+        df_sectors.style.apply(highlight_benchmarks, axis=1)
+        .background_gradient(cmap='RdYlGn', subset=['L-score', 'S-score', 'S-L', '20일(%)'])
+        .format({'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'}),
         use_container_width=True, height=600
     )
     
@@ -109,12 +105,10 @@ with tab1:
     with col_exp2:
         st.caption("**🚀 S-score (단기 기세)**: 20일선 이격도, 1개월 수익률 등을 종합한 단기 모멘텀 점수입니다.")
     
-    st.caption("---")
-    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록(초록색) 과거보다 최근 한 달 사이에 돈이 훨씬 더 맹렬하게 몰리고 있음을 뜻합니다.")
-    st.caption("2️⃣ **미너비니 절대 추세 필터 (랭킹 보정):** 아무리 S-L 값이 커도, 현재 단기 추세(S-score) 자체가 마이너스(-)인 섹터는 '하락 추세 속의 일시적 반등'일 뿐입니다. 이런 '떨어지는 칼날'은 가짜 신호로 간주하여 순위표 최하위권으로 강제 강등시켰습니다.")
-    st.caption("3️⃣ **20일(%):** 최근 1개월간의 실제 수익률 성적표입니다. 스코어와 실제 수익률이 동반 상승하는지 확인하십시오.")
+    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
+    st.caption("2️⃣ **미너비니 절대 추세 필터 (랭킹 보정):** 단기 추세(S-score)가 마이너스(-)인 섹터는 '하락 추세 속의 일시적 반등'일 뿐입니다. 이런 '떨어지는 칼날'은 가짜 신호로 간주하여 순위표 최하위권으로 강제 강등시켰습니다.")
+    st.caption("3️⃣ **20일(%):** 최근 1개월간의 실제 수익률 성적표입니다.")
 
-# === 탭2: 개별 종목 ===
 with tab2:
     st.subheader("💹 개별 종목 추적 (위험도별 분류)")
     def highlight_risk(row):
@@ -126,17 +120,13 @@ with tab2:
         return [''] * len(row)
 
     st.dataframe(
-        df_individual.style
-            .apply(highlight_risk, axis=1)
-            .background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비', '52저대비'], vmin=-10, vmax=10)
-            .format({
-                '현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'
-            }, na_rep="N/A"),
+        df_individual.style.apply(highlight_risk, axis=1)
+        .background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비', '52저대비'], vmin=-10, vmax=10)
+        .format({'현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'}),
         use_container_width=True, height=600
     )
-    st.caption("💡 **배경색 의미:** 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
+    st.caption("💡 배경색 의미: 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
 
-# === 탭3: 11개 핵심 섹터 ===
 with tab3:
     st.subheader("🎯 11개 핵심 섹터 현황")
     format_dict = {'S-SCORE': '{:.2f}'}
@@ -146,22 +136,18 @@ with tab3:
         grad_subset.append('20일(%)')
 
     st.dataframe(
-        df_core.style.background_gradient(cmap='RdYlGn', subset=grad_subset)
-        .format(format_dict), 
+        df_core.style.background_gradient(cmap='RdYlGn', subset=grad_subset).format(format_dict), 
         use_container_width=True
     )
-    st.caption("💡 S&P 500의 11개 표준 섹터를 통해 시장의 주도 테마를 읽으십시오.")
 
-# === [7] 개별 차트 ===
+# [8] 개별 차트
 st.markdown("---")
 st.subheader("📉 개별 섹터 히스토리 차트")
-all_sector_keys = list(all_data['sector_etfs'].keys())
-selected = st.selectbox("섹터 선택", all_sector_keys)
+selected = st.selectbox("섹터 선택", list(all_data['sector_etfs'].keys()))
 
 if selected:
     hist = all_data['sector_etfs'][selected]['history']
     ticker = all_data['sector_etfs'][selected]['ticker']
-    
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='종가', line=dict(width=2, color='blue')))
     fig.add_trace(go.Scatter(x=hist.index, y=hist['MA20'], name='MA20', line=dict(dash='dash', color='orange')))
@@ -169,4 +155,8 @@ if selected:
     
     view_days = min(len(hist), 500)
     fig.update_layout(
-        title=f"{selected
+        title=f"{selected} ({ticker}) 분석 차트",
+        xaxis_range=[hist.index[-view_days], hist.index[-1]],
+        template="plotly_white", height=550, hovermode="x unified"
+    )
+    st.plotly_chart(fig, use_container_width=True)

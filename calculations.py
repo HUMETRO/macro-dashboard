@@ -14,7 +14,7 @@ def calculate_sector_scores(sector_data):
             ma200 = data.get('ma200', np.nan)
             ma20 = hist['MA20'].iloc[-1]
             
-            # L-score (원래의 정교한 스케일 복구!)
+            # L-score
             ma200_dist = (current / ma200 - 1) if not pd.isna(ma200) and ma200 > 0 else 0
             high_52w = data['high_52w']
             low_52w = data['low_52w']
@@ -27,7 +27,7 @@ def calculate_sector_scores(sector_data):
             
             l_score = ma200_dist * 0.4 + pos_52w * 0.3 + ret_6m * 0.3
             
-            # S-score (원래 스케일 복구!)
+            # S-score
             ma20_dist = (current / ma20 - 1) if not pd.isna(ma20) and ma20 > 0 else 0
             
             if len(hist) >= 21:
@@ -48,7 +48,6 @@ def calculate_sector_scores(sector_data):
 
             # 💡 [미너비니 절대 추세 필터] 
             s_l_value = s_score - l_score
-            # 단기 스코어가 마이너스(하락세)면 순위표에서 -10점을 줘서 무조건 꼴찌 그룹으로 강등!
             rank_score = s_l_value - 10 if s_score < 0 else s_l_value
 
             results.append({
@@ -67,7 +66,6 @@ def calculate_sector_scores(sector_data):
         return pd.DataFrame()
         
     df = pd.DataFrame(results)
-    # 랭크 스코어 기준으로 정렬 (비트코인은 여기서 지하로 갑니다)
     df = df.sort_values('_rank_score', ascending=False).reset_index(drop=True)
     df = df.drop(columns=['_rank_score']) 
     df.insert(0, 'R', range(1, len(df) + 1))
@@ -109,7 +107,7 @@ def calculate_individual_metrics(stock_data):
     return pd.DataFrame(results)
 
 def calculate_core_sector_scores(core_data):
-    """11개 핵심 섹터용"""
+    """11개 핵심 섹터용: S-SCORE 및 요청하신 20일 수익률 추가"""
     if not core_data:
         return pd.DataFrame()
         
@@ -130,13 +128,16 @@ def calculate_core_sector_scores(core_data):
             vol = hist['Close'].pct_change().iloc[-20:].std()
             if pd.isna(vol): vol = 0
             
-            # 원래 스케일 복구! (* 100 제거)
             s_score = ma20_dist * 0.5 + ret_1m * 0.4 - vol * 0.1
+            
+            # [수정 포인트] 11개 핵심 섹터에도 20일 수익률(%) 추가
+            ret_20d = (current / hist['Close'].iloc[-20] - 1) * 100 if len(hist) >= 20 else 0
             
             results.append({
                 '섹터': name,
                 '티커': data['ticker'],
-                'S-SCORE': round(s_score, 2)
+                'S-SCORE': round(s_score, 2),
+                '20일(%)': round(ret_20d, 2) # <-- 제자님의 요청 사항 반영!
             })
         except Exception as e:
             print(f"❌ {name} 계산 실패: {e}")

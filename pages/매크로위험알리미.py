@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import sys
 import os
 
-# 상위 폴더 경로 설정
+# 상위 폴더 경로 설정 (Home 폴더의 부품을 찾기 위함)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
@@ -53,58 +53,34 @@ with col1:
 with col2:
     st.metric("평균 S-score", f"{avg_s:.2f}", delta="단기 모멘텀", delta_color="off")
 with col3:
-    if avg_l < 0 and avg_s < 0:
-        st.error("🚨 버려 버려! (하락장)")
-    elif avg_l > 0 and avg_s > 0:
+    if avg_l > 0 and avg_s > 0:
         st.success("✅ 매수 신호 (상승장)")
+    elif avg_l < 0 and avg_s < 0:
+        st.error("🚨 버려 버려! (하락장)")
     else:
         st.warning("⚠️ 관망 (방향 탐색)")
 
-# 안전자산 경보
+st.caption("💡 **시장 상태 판별 기준:** 전체 섹터 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다.")
+
+# 안전자산 쏠림 감지 조기경보 시스템
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
+
 if safe_count >= 2:
-    st.error(f"🚨 안전자산 쏠림 경보! ({safe_count}개 포착)")
+    st.error(f"🚨 **안전 자산 쏠림 경보!** 현재 상위 5개 중 {safe_count}개가 방어적 자산입니다. 시장이 피난 중입니다!")
+elif safe_count == 1:
+    st.warning("⚠️ **안전자산 주의:** 상위권에 방어적 자산이 포착되었습니다.")
 
 st.markdown("---")
 
+# 3개 탭 구성
 tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개 핵심 섹터"])
 
+# === 탭1: 섹터 ETF ===
 with tab1:
-    st.subheader("📈 섹터 ETF 스코어")
-    subset_cols = ['L-score', 'S-score', 'S-L', '20일(%)']
-    st.dataframe(df_sectors.style.background_gradient(cmap='RdYlGn', subset=subset_cols).format({
-        'R': '{:.0f}', 'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'
-    }), use_container_width=True, height=600)
-
-with tab2:
-    st.subheader("💹 개별 종목 추적")
-    numeric_cols = ['연초대비', 'high대비', '200대비', '전일대비', '52저대비']
-    st.dataframe(df_individual.style.background_gradient(cmap='RdYlGn', subset=numeric_cols, vmin=-10, vmax=10).format({
-        '현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'
-    }, na_rep="N/A"), use_container_width=True, height=600)
-
-with tab3:
-    st.subheader("🎯 11개 핵심 섹터")
-    st.dataframe(df_core.style.background_gradient(cmap='RdYlGn', subset=['S-SCORE']).format({
-        'R1': '{:.0f}', 'S-SCORE': '{:.2f}'
-    }), use_container_width=True)
-
-# === 개별 차트 ===
-st.markdown("---")
-st.subheader("📉 개별 섹터 차트")
-all_sectors = list(all_data['sector_etfs'].keys())
-selected = st.selectbox("섹터 선택", all_sectors)
-
-if selected and selected in all_data['sector_etfs']:
-    hist = all_data['sector_etfs'][selected]['history']
-    ticker = all_data['sector_etfs'][selected]['ticker']
+    st.subheader("📈 섹터 ETF 스코어 (S-L 순위)")
     
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='종가', line=dict(width=2, color='blue')))
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['MA20'], name='MA20', line=dict(dash='dash', color='orange')))
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['MA200'], name='MA200', line=dict(dash='dot', color='green')))
-    
-    fig.update_layout(title=f"{selected} ({ticker}) 차트", xaxis_title="날짜", yaxis_title="가격 ($)", height=500)
-    st.plotly_chart(fig, use_container_width=True)
+    def highlight_benchmarks(row):
+        sector = row['섹터']
+        if

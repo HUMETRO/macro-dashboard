@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 
 def get_all_market_data():
-    """모든 시장 데이터를 수집하며, 차트 왼쪽 끝까지 MA200을 표시하기 위해 3년치를 수집합니다."""
+    """모든 시장 데이터를 수집하며, 차트와 계산에 필요한 모든 필드(52주 고저점 등)를 포함합니다."""
     
     sector_etfs = {
         '금속광산': 'XME', '반도체': 'SOXX', '소비': 'XLB', '에너지': 'XLE',
@@ -40,40 +40,37 @@ def get_all_market_data():
     }
 
 def _fetch_data(tickers_dict):
-    """티커 데이터를 3y 기간으로 가져와 MA200을 차트 시작점부터 표시합니다."""
+    """3년 데이터를 가져와 이동평균 및 52주 지표를 완벽히 계산합니다."""
     data = {}
     current_year = datetime.now().year
     
     for name, ticker in tickers_dict.items():
         try:
             stock = yf.Ticker(ticker)
-            # [수정] 2y -> 3y로 변경하여 과거 데이터의 깊이를 더 확보합니다.
-            hist = stock.history(period='3y')
+            hist = stock.history(period='3y') # 3년치 확보
             
-            if hist.empty:
-                continue
+            if hist.empty: continue
             
-            hist.index = pd.to_datetime(hist.index)
-            if hist.index.tz is not None:
-                hist.index = hist.index.tz_localize(None)
+            hist.index = pd.to_datetime(hist.index).tz_localize(None)
             
-            # 이동평균 계산
+            # 지표 계산
             hist['MA20'] = hist['Close'].rolling(window=20).mean()
             hist['MA200'] = hist['Close'].rolling(window=200).mean()
             
-            # YTD 계산을 위한 필터링
-            hist_ytd = hist[hist.index.year == current_year]
-            ytd_start_price = hist_ytd['Close'].iloc[0] if not hist_ytd.empty else hist['Close'].iloc[0]
+            current_price = float(hist['Close'].iloc[-1])
             
+            # [수술 완료] calculations.py가 요구하는 모든 필드를 생성
             data[name] = {
                 'ticker': ticker,
-                'current': float(hist['Close'].iloc[-1]),
-                'prev_day': float(hist['Close'].iloc[-2]) if len(hist) > 1 else float(hist['Close'].iloc[-1]),
-                'ytd_start': float(ytd_start_price),
+                'current': current_price,
+                'prev_day': float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price,
+                'high_52w': float(hist['Close'].tail(252).max()), # 최근 1년 고점
+                'low_52w': float(hist['Close'].tail(252).min()),  # 최근 1년 저점
+                'ytd_start': float(hist[hist.index.year == current_year]['Close'].iloc[0]) if not hist[hist.index.year == current_year].empty else current_price,
                 'ma200': float(hist['MA200'].iloc[-1]) if not pd.isna(hist['MA200'].iloc[-1]) else np.nan,
                 'history': hist
             }
         except Exception as e:
-            print(f"❌ {name} ({ticker}) 가져오기 실패: {e}")
-
+            print(f"❌ {name} 에러: {e}")
+            
     return data

@@ -122,4 +122,12 @@ if selected and selected in all_data['sector_etfs']:
     fig.add_trace(go.Scatter(x=hist.index, y=hist['MA200'], name='MA200', line=dict(dash='dot', color='green')))
     
     # [핵심] 차트의 가독성을 위해 최근 약 1.5년(500일) 정도로 화면을 고정하지만, 
-    # 데이터는 3년치라
+    # 데이터는 3년치라 200일선은 이미 계산된 상태로 나타납니다.
+    fig.update_layout(
+        title=f"{selected} ({ticker}) 차트",
+        xaxis_title="날짜",
+        yaxis_title="가격 ($)",
+        height=550,
+        xaxis_range=[hist.index[-500], hist.index[-1]] 
+    )
+    st.plotly_chart(fig, use_container_width=True)

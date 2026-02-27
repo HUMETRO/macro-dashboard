@@ -46,7 +46,7 @@ if df_sectors is None or df_sectors.empty:
     st.error("🚨 데이터를 불러오지 못했습니다. 사이드바의 새로고침을 눌러주세요.")
     st.stop() 
 
-# [5] 메인 시장 상태 지표 (디자인 복구)
+# [5] 메인 시장 상태 지표
 col1, col2, col3 = st.columns(3)
 avg_l = df_sectors['L-score'].mean()
 avg_s = df_sectors['S-score'].mean()
@@ -65,6 +65,90 @@ with col3:
 
 st.caption("💡 **시장 판별:** 평균 L/S 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다.")
 
-# 안전자산 쏠림 감지 (복구)
+# 안전자산 쏠림 감지
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
-safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소
+safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
+safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
+
+if safe_count >= 2:
+    st.error(f"🚨 **안전 자산 쏠림 경보!** 상위 5개 중 {safe_count}개가 방어적 자산입니다.")
+
+st.markdown("---")
+
+# [6] 3개 탭 구성
+tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개 핵심 섹터"])
+
+with tab1:
+    st.subheader("📈 섹터 ETF 스코어 (S-L 순위)")
+    
+    def highlight_benchmarks(row):
+        sector = row['섹터']
+        if sector in ['S&P', 'NASDAQ']:
+            return ['background-color: #d9d9d9; font-weight: bold'] * len(row)
+        elif sector in ['CASH', '물가연동채', '장기국채']:
+            return ['background-color: #e2efda; color: #385723; font-weight: bold'] * len(row)
+        return [''] * len(row)
+
+    st.dataframe(
+        df_sectors.style
+            .apply(highlight_benchmarks, axis=1)
+            .background_gradient(cmap='RdYlGn', subset=['L-score', 'S-score', 'S-L', '20일(%)'])
+            .format({
+                'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'
+            }),
+        use_container_width=True, height=600
+    )
+    
+    st.markdown("##### 💡 퀀트 지표 핵심 요약")
+    st.caption("1️⃣ **S-L (추세 가속도):** 값이 클수록 최근 돈이 더 맹렬하게 몰리고 있음을 뜻합니다.")
+    st.caption("2️⃣ **미너비니 필터:** 단기 추세(S)가 마이너스면 순위에서 강등시킵니다.")
+
+with tab2:
+    st.subheader("💹 개별 종목 추적 (위험도별 분류)")
+    def highlight_risk(row):
+        ticker = row['티커']
+        if ticker in ['VOO', 'QQQ', 'AAPL', 'MSFT', 'GOOG', 'AMZN', 'AVGO']:
+            return ['background-color: #e2efda; font-weight: bold'] * len(row) 
+        elif ticker in ['SOXL', 'BULZ', 'IBIT']:
+            return ['background-color: #f8cbad; color: #833c0c; font-weight: bold'] * len(row) 
+        return [''] * len(row)
+
+    st.dataframe(
+        df_individual.style
+            .apply(highlight_risk, axis=1)
+            .background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비'], vmin=-10, vmax=10)
+            .format({
+                '현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%'
+            }, na_rep="N/A"),
+        use_container_width=True, height=600
+    )
+
+with tab3:
+    st.subheader("🎯 11개 핵심 섹터")
+    st.dataframe(
+        df_core.style.background_gradient(cmap='RdYlGn', subset=['S-SCORE'])
+        .format({'S-SCORE': '{:.2f}'}), 
+        use_container_width=True
+    )
+
+# [7] 개별 차트
+st.markdown("---")
+st.subheader("📉 개별 섹터 히스토리 차트")
+selected = st.selectbox("섹터 선택", list(all_data['sector_etfs'].keys()))
+
+if selected:
+    hist = all_data['sector_etfs'][selected]['history']
+    ticker = all_data['sector_etfs'][selected]['ticker']
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='종가', line=dict(width=2, color='blue')))
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MA20'], name='MA20', line=dict(dash='dash', color='orange')))
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MA200'], name='MA200', line=dict(dash='dot', color='green')))
+    
+    view_days = min(len(hist), 500)
+    fig.update_layout(
+        title=f"{selected} ({ticker}) 분석",
+        xaxis_range=[hist.index[-view_days], hist.index[-1]],
+        template="plotly_white", height=550
+    )
+    st.plotly_chart(fig, use_container_width=True)

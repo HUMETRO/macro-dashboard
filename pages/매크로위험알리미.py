@@ -2,10 +2,20 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import sys
-sys.path.append('..')
+import os
 
-from data_fetcher import get_all_market_data
-from calculations import calculate_sector_scores, calculate_individual_metrics, calculate_core_sector_scores
+# [강력 처방] 상위 폴더(Home)에 있는 data_fetcher와 calculations를 찾을 수 있게 경로를 강제 지정합니다.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+try:
+    from data_fetcher import get_all_market_data
+    from calculations import calculate_sector_scores, calculate_individual_metrics, calculate_core_sector_scores
+except ImportError as e:
+    st.error(f"🚨 부품 로딩 실패! 관리자에게 문의하세요. (에러: {e})")
+    st.stop()
 
 st.set_page_config(page_title="매크로 위험알리미", page_icon="📊", layout="wide")
 
@@ -53,7 +63,7 @@ with col3:
 
 st.caption("💡 **시장 상태 판별 기준:** 30개 전체 섹터의 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려(위험)'**, 그 외는 **'관망'**으로 표시됩니다. 감정에 휘둘리지 말고 객관적인 숫자를 믿으십시오.")
 
-# 💡 [신규 무기 장착] 안전자산 쏠림 감지 조기경보 시스템
+# 안전자산 쏠림 감지 조기경보 시스템
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
@@ -91,109 +101,3 @@ with tab1:
             .format({
                 'R': '{:.0f}',
                 'L-score': '{:.2f}',
-                'S-score': '{:.2f}',
-                'S-L': '{:.2f}',
-                '20일(%)': '{:.2f}%' 
-            }),
-        use_container_width=True,
-        height=700
-    )
-    
-    # 💡 [요청사항 반영] 담백하고 깔끔하게 제목 수정 완료!
-    st.markdown("##### 💡 퀀트 지표 핵심 요약")
-    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록(초록색) 과거보다 최근 한 달 사이에 돈이 훨씬 더 맹렬하게 몰리고 있음을 뜻합니다.")
-    st.caption("2️⃣ **미너비니 절대 추세 필터 (랭킹 보정):** 아무리 S-L 값이 커도, 현재 단기 추세(S-score) 자체가 마이너스(-)인 '떨어지는 칼날' 종목은 가짜 반등(기저효과)으로 간주하여 순위표 최하위권으로 강등시켰습니다.")
-    st.caption("3️⃣ **20일(%):** 최근 1개월(약 20거래일) 동안 실제로 내 계좌에 꽂힌 '진짜 수익률 성적표'입니다. S-L 순위와 20일 수익률이 동반 상승하는 섹터가 시장의 진짜 주도주입니다.")
-    st.markdown("<br>", unsafe_allow_html=True) 
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("L-score vs S-score")
-        df_clean = df_sectors.dropna(subset=['L-score', 'S-score', 'S-L'])
-        if not df_clean.empty:
-            fig = px.scatter(
-                df_clean, x='L-score', y='S-score', text='섹터',
-                size=abs(df_clean['S-L']) + 0.1, color='S-L',
-                color_continuous_scale='RdYlGn', title="장단기 스코어 분포"
-            )
-            fig.update_traces(textposition='top center', textfont_size=8)
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-            
-    with col2:
-        st.subheader("S-L 순위")
-        fig = px.bar(
-            df_sectors.head(15), x='S-L', y='섹터', orientation='h',
-            color='S-L', color_continuous_scale='RdYlGn', title="Top 15 단기-장기 차이"
-        )
-        fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
-
-# === 탭2: 개별 종목 ===
-with tab2:
-    st.subheader("💹 개별 종목 추적 (위험도별 분류)")
-    
-    def highlight_risk(row):
-        ticker = row['티커']
-        if ticker in ['VOO', 'QQQ', 'AAPL', 'MSFT', 'GOOG', 'AMZN', 'AVGO']:
-            return ['background-color: #e2efda; font-weight: bold'] * len(row) 
-        elif ticker in ['SMH', 'SOXX']:
-            return ['background-color: #fff2cc; font-weight: bold'] * len(row) 
-        elif ticker in ['SOXL', 'BULZ', 'IBIT', 'META']:
-            return ['background-color: #f8cbad; color: #833c0c; font-weight: bold'] * len(row) 
-        return [''] * len(row)
-
-    numeric_cols = ['연초대비', 'high대비', '200대비', '전일대비', '52저대비']
-    
-    st.dataframe(
-        df_individual.style
-            .apply(highlight_risk, axis=1) 
-            .background_gradient(cmap='RdYlGn', subset=numeric_cols, vmin=-10, vmax=10) 
-            .format({
-                '현재가': '{:.2f}',
-                '연초대비': '{:.1f}%',
-                'high대비': '{:.1f}%',
-                '200대비': '{:.1f}%',
-                '전일대비': '{:.1f}%',
-                '52저대비': '{:.1f}%'
-            }, na_rep="N/A"),
-        use_container_width=True,
-        height=700
-    )
-    st.caption("💡 **배경색 의미:** 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
-
-# === 탭3: 11개 핵심 섹터 ===
-with tab3:
-    st.subheader("🎯 11개 핵심 섹터 (S&P 500 GICS)")
-    st.caption("이 11개 섹터가 미국 경제 전체를 대표합니다")
-    
-    st.dataframe(
-        df_core.style
-            .background_gradient(cmap='RdYlGn', subset=['S-SCORE'])
-            .format({
-                'R1': '{:.0f}',
-                'S-SCORE': '{:.2f}'
-            }),
-        use_container_width=True,
-        height=400
-    )
-    
-    fig = px.bar(
-        df_core, x='섹터', y='S-SCORE', color='S-SCORE',
-        color_continuous_scale='RdYlGn', title="11개 핵심 섹터 단기 모멘텀"
-    )
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
-
-# 개별 차트
-st.markdown("---")
-st.subheader("📉 개별 섹터 차트")
-
-all_sectors = list(all_data['sector_etfs'].keys())
-selected = st.selectbox("섹터 선택", all_sectors)
-
-if selected and selected in all_data['sector_etfs']:
-    hist = all_data['sector_etfs'][selected]['history']
-    ticker = all_data['sector_etfs'][selected]['ticker']
-    
-    fig = go

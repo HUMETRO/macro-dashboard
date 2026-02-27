@@ -74,3 +74,37 @@ tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개
 with tab1:
     st.subheader("📈 섹터 ETF 스코어")
     subset_cols = ['L-score', 'S-score', 'S-L', '20일(%)']
+    st.dataframe(df_sectors.style.background_gradient(cmap='RdYlGn', subset=subset_cols).format({
+        'R': '{:.0f}', 'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'
+    }), use_container_width=True, height=600)
+
+with tab2:
+    st.subheader("💹 개별 종목 추적")
+    numeric_cols = ['연초대비', 'high대비', '200대비', '전일대비', '52저대비']
+    st.dataframe(df_individual.style.background_gradient(cmap='RdYlGn', subset=numeric_cols, vmin=-10, vmax=10).format({
+        '현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'
+    }, na_rep="N/A"), use_container_width=True, height=600)
+
+with tab3:
+    st.subheader("🎯 11개 핵심 섹터")
+    st.dataframe(df_core.style.background_gradient(cmap='RdYlGn', subset=['S-SCORE']).format({
+        'R1': '{:.0f}', 'S-SCORE': '{:.2f}'
+    }), use_container_width=True)
+
+# === 개별 차트 ===
+st.markdown("---")
+st.subheader("📉 개별 섹터 차트")
+all_sectors = list(all_data['sector_etfs'].keys())
+selected = st.selectbox("섹터 선택", all_sectors)
+
+if selected and selected in all_data['sector_etfs']:
+    hist = all_data['sector_etfs'][selected]['history']
+    ticker = all_data['sector_etfs'][selected]['ticker']
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='종가', line=dict(width=2, color='blue')))
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MA20'], name='MA20', line=dict(dash='dash', color='orange')))
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MA200'], name='MA200', line=dict(dash='dot', color='green')))
+    
+    fig.update_layout(title=f"{selected} ({ticker}) 차트", xaxis_title="날짜", yaxis_title="가격 ($)", height=500)
+    st.plotly_chart(fig, use_container_width=True)

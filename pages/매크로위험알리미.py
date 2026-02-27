@@ -5,7 +5,7 @@ import sys
 import os
 import numpy as np
 
-# [1] 경로 설정: 상위 폴더의 부품 로드용
+# [1] 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
@@ -63,9 +63,9 @@ with col3:
     else:
         st.warning("⚠️ 관망 (방향 탐색)")
 
-st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.")
+st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.") [cite: 2026-02-22]
 
-# 조기경보 시스템 (원본 문구 유지)
+# 조기경보 시스템
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
@@ -102,11 +102,20 @@ with tab1:
         use_container_width=True, height=600
     )
     
-    # 💡 [설명 문구 복구 1]
+    # 💡 [설명 문구 대폭 보강]
     st.markdown("##### 💡 퀀트 지표 핵심 요약")
-    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
-    st.caption("2️⃣ **미너비니 필터:** 단기 추세(S)가 마이너스면 '떨어지는 칼날'로 간주하여 순위에서 강등시킵니다.")
-    st.caption("3️⃣ **20일(%):** 최근 1개월간의 실제 수익률 성적표입니다.")
+    col_exp1, col_exp2 = st.columns(2)
+    with col_exp1:
+        st.caption("**📊 L-score (Long-term Score)**")
+        st.caption("섹터의 **'장기 체력'**을 의미합니다. 200일 이동평균선과의 이격도, 52주 고점 대비 위치, 6개월 수익률을 종합하여 계산합니다. 이 값이 높을수록 장기적인 상승 추세가 견고하다는 뜻입니다.")
+    with col_exp2:
+        st.caption("**🚀 S-score (Short-term Score)**")
+        st.caption("섹터의 **'단기 기세'**를 의미합니다. 20일 이동평균선과의 이격도, 1개월 수익률, 그리고 변동성을 종합합니다. 이 값이 높을수록 최근 시장에서 가장 뜨겁게 주목받고 있는 '대세주'임을 나타냅니다.")
+    
+    st.caption("---")
+    st.caption("1️⃣ **S-L (추세 가속도):** 단기 기세(S)가 장기 체력(L)을 얼마나 앞지르고 있는지를 보여줍니다. 초록색일수록 최근 에너지가 폭발적으로 응축되고 있다는 신호입니다.")
+    st.caption("2️⃣ **미너비니 필터:** 아무리 S-L이 높더라도 S-score가 마이너스라면 '역배열 하락 중의 일시적 반등'일 뿐입니다. 이런 가짜 신호는 자동으로 하위권 강등 처리됩니다.")
+    st.caption("3️⃣ **20일(%):** 최근 1개월간 실제 내 계좌에 찍히는 수익률입니다. 스코어와 실제 수익률이 함께 움직이는지 확인하십시오.")
 
 # === 탭2: 개별 종목 ===
 with tab2:
@@ -128,14 +137,11 @@ with tab2:
             }, na_rep="N/A"),
         use_container_width=True, height=600
     )
-    # 💡 [설명 문구 복구 2]
     st.caption("💡 **배경색 의미:** 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
 
-# === 탭3: 11개 핵심 섹터 (20일 수익률 추가 완료) ===
+# === 탭3: 11개 핵심 섹터 ===
 with tab3:
     st.subheader("🎯 11개 핵심 섹터 현황")
-    
-    # 스타일 및 포맷 설정
     format_dict = {'S-SCORE': '{:.2f}'}
     grad_subset = ['S-SCORE']
     if '20일(%)' in df_core.columns:
@@ -147,7 +153,7 @@ with tab3:
         .format(format_dict), 
         use_container_width=True
     )
-    st.caption("💡 S&P 500을 구성하는 11개 표준 섹터의 단기 모멘텀과 최근 수익률을 비교합니다.")
+    st.caption("💡 S&P 500의 11개 표준 섹터를 통해 현재 시장의 주도 테마와 자금 흐름을 읽으십시오.")
 
 # === [7] 개별 차트 ===
 st.markdown("---")

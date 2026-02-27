@@ -4,3 +4,4 @@ streamlit>=1.30.0
 plotly
 numpy
 finance-datareader
+matplotlib

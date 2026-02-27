@@ -5,7 +5,7 @@ import sys
 import os
 import numpy as np
 
-# [1] 경로 설정
+# [1] 경로 설정: 상위 폴더의 부품 로드용
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
@@ -65,13 +65,13 @@ with col3:
 
 st.caption("💡 **시장 상태 판별 기준:** 전체 평균 장기/단기 스코어가 모두 **0보다 크면 '매수'**, 모두 **0보다 작으면 '버려'**, 그 외는 **'관망'**입니다. 객관적인 숫자를 믿으십시오.")
 
-# 조기경보 시스템
+# 조기경보 시스템 (원본 문구 유지)
 top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count = sum(1 for sector in top_5_sectors if sector in safe_assets)
 
 if safe_count >= 2:
-    st.error(f"🚨 **안전자산 쏠림 경보 발령!** 현재 상위 5개 중 {safe_count}개가 방어적 자산입니다. 스마트머니가 피난 중입니다. 관망하십시오!")
+    st.error(f"🚨 **안전 자산 쏠림 경보 발령!** 현재 상위 5개 중 {safe_count}개가 방어적 자산입니다. 스마트머니가 피난 중입니다. 관망하십시오!")
 elif safe_count == 1:
     st.warning("⚠️ **안전자산 상승 주의:** 상위 5위권 내에 방어적 자산이 포착되었습니다.")
 
@@ -83,6 +83,7 @@ tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개
 # === 탭1: 섹터 ETF ===
 with tab1:
     st.subheader("📈 섹터 ETF 스코어 (S-L 순위)")
+    
     def highlight_benchmarks(row):
         sector = row['섹터']
         if sector in ['S&P', 'NASDAQ']:
@@ -100,6 +101,12 @@ with tab1:
             }),
         use_container_width=True, height=600
     )
+    
+    # 💡 [설명 문구 복구 1]
+    st.markdown("##### 💡 퀀트 지표 핵심 요약")
+    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
+    st.caption("2️⃣ **미너비니 필터:** 단기 추세(S)가 마이너스면 '떨어지는 칼날'로 간주하여 순위에서 강등시킵니다.")
+    st.caption("3️⃣ **20일(%):** 최근 1개월간의 실제 수익률 성적표입니다.")
 
 # === 탭2: 개별 종목 ===
 with tab2:
@@ -121,14 +128,16 @@ with tab2:
             }, na_rep="N/A"),
         use_container_width=True, height=600
     )
+    # 💡 [설명 문구 복구 2]
+    st.caption("💡 **배경색 의미:** 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
 
 # === 탭3: 11개 핵심 섹터 (20일 수익률 추가 완료) ===
 with tab3:
     st.subheader("🎯 11개 핵심 섹터 현황")
-    # '20일(%)' 열이 존재한다면 스타일과 포맷을 적용합니다.
+    
+    # 스타일 및 포맷 설정
     format_dict = {'S-SCORE': '{:.2f}'}
     grad_subset = ['S-SCORE']
-    
     if '20일(%)' in df_core.columns:
         format_dict['20일(%)'] = '{:.2f}%'
         grad_subset.append('20일(%)')
@@ -138,6 +147,7 @@ with tab3:
         .format(format_dict), 
         use_container_width=True
     )
+    st.caption("💡 S&P 500을 구성하는 11개 표준 섹터의 단기 모멘텀과 최근 수익률을 비교합니다.")
 
 # === [7] 개별 차트 ===
 st.markdown("---")

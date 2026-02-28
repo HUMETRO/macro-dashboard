@@ -3,21 +3,21 @@ import json
 import os
 from datetime import datetime
 
-# [1] 기본 설정
 st.set_page_config(
-    page_title="JEFF 퀀트 매크로 연구소",
+    page_title="퀀트 매크로 연구소",
     page_icon="🚀",
     layout="centered"
 )
 
-# 🔒 관리자 비밀번호 (원하는 숫자로 수정하세요!)
-ADMIN_PASSWORD = "3918"
-
-# [2] 스타일 시트 (모바일 최적화 및 디자인)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
+
+/* ✅ 모바일 상단 메뉴바 가림 방지 */
+.block-container {
+    padding-top: 3.5rem !important;
+}
 
 .hero-box {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
@@ -36,10 +36,8 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     padding: 10px 14px;
     border-radius: 8px;
     font-size: 0.82rem;
-    margin-bottom: 1.5rem;
-    color: #856404;
+    margin-bottom: 1rem;
 }
-
 .feature-card {
     background: #f8f9fa;
     border-left: 4px solid #2d6a9f;
@@ -47,33 +45,84 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     border-radius: 8px;
     margin-bottom: 8px;
     font-size: 0.9rem;
-    color: #333;
+    line-height: 1.6;
 }
 
+/* ✅ 업데이트 로그 카드 */
+.update-card {
+    background: #f8faff;
+    border: 1px solid #dbeafe;
+    border-left: 4px solid #3b82f6;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    font-size: 0.86rem;
+    line-height: 1.6;
+}
+.update-version {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #3b82f6;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 3px;
+}
+.update-date {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    margin-bottom: 6px;
+}
+.update-title {
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 4px;
+}
+.update-desc {
+    color: #4b5563;
+    font-size: 0.83rem;
+}
+.tag {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+.tag-fix      { background: #fee2e2; color: #dc2626; }
+.tag-feature  { background: #d1fae5; color: #059669; }
+.tag-improve  { background: #dbeafe; color: #2563eb; }
+.tag-mobile   { background: #fef9c3; color: #d97706; }
+
+/* 댓글 */
 .comment-card {
     background: #f1f3f6;
     border-radius: 10px;
     padding: 12px 16px;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     font-size: 0.87rem;
-    color: #333;
+    line-height: 1.5;
 }
 .comment-meta { font-size: 0.74rem; color: #888; margin-bottom: 4px; }
 
 div.stButton > button {
     width: 100%;
-    padding: 0.8rem 1rem;
-    font-size: 1.1rem;
+    padding: 0.7rem 1rem;
+    font-size: 1rem;
     font-weight: 700;
-    border-radius: 12px;
-    background-color: #2d6a9f;
-    color: white;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-radius: 10px;
+}
+@media (max-width: 640px) {
+    .block-container { padding-top: 4rem !important; }
+    h1 { font-size: 1.3rem !important; }
 }
 </style>
 """, unsafe_allow_html=True)
 
-# [3] 히어로 섹션
+# ============================
+# [1] 히어로 섹션
+# ============================
 st.markdown("""
 <div class="hero-box">
     <h2>🚀 JEFF의 퀀트 매크로 연구소</h2>
@@ -82,23 +131,24 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# [4] 제자님 오리지널 안내 가이드
 st.markdown("""
 <div class="mobile-tip">
-    📱 <b>안내:</b> 왼쪽 상단 <b>[ > ]</b> 버튼으로 메뉴를 찾기 어려우시다면, <br>
-    망설이지 말고 바로 아래 <b>[분석기 실행]</b> 버튼을 눌러주세요!
+    📱 <b>모바일 사용자:</b> 왼쪽 상단 <b>[ &gt; ]</b> 버튼을 누르면 전체 메뉴를 볼 수 있어요!
 </div>
 """, unsafe_allow_html=True)
 
-# [5] 분석기 실행 버튼
-st.info("💡 실시간 매크로 위험 분석기를 시작하시려면 아래 버튼을 클릭하십시오.")
+# ============================
+# [2] 메인 바로가기 버튼
+# ============================
 if st.button("📊 실시간 매크로 위험 분석기 실행 →", use_container_width=True):
     st.switch_page("pages/매크로위험알리미.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# [6] 주요 분석 기능 (4대 핵심 기능)
-with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
+# ============================
+# [3] 주요 기능 안내
+# ============================
+with st.expander("🔍 주요 분석 기능 보기", expanded=False):
     st.markdown("""
 <div class="feature-card">📊 <b>매크로 위험알리미</b><br>
 미국 섹터 ETF와 11개 핵심 섹터의 장단기 추세 분석 → 시장 위험 신호 포착</div>
@@ -112,9 +162,121 @@ with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
 
 st.markdown("---")
 
-# [7] 💬 방문자 의견 게시판 (문구 업데이트 완료!)
-st.markdown("### 💬 연구소 게시판")
-st.caption("📈 시장에 대한 생각이나 본 연구소 페이지 개선을 위한 자유로운 의견을 남겨주세요!")
+# ============================
+# ✅ [4] 업데이트 로그 (수정3: 새로 추가)
+# ============================
+st.markdown("### 📋 업데이트 로그")
+st.caption("JEFF님이 직접 기록하는 개선 이력입니다.")
+
+UPDATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "updates.json")
+
+# 기본 초기 업데이트 내역 (처음 실행 시 파일 없을 경우 시드 데이터)
+DEFAULT_UPDATES = [
+    {
+        "version": "v0.3",
+        "date": "2026-02-28",
+        "title": "모바일 UI 전면 개선 + 댓글 기능 추가",
+        "desc": "모바일 상단 메뉴 가림 현상 수정, 카드뷰 2열 정렬, 색상별 그룹 분류 적용",
+        "tags": ["mobile", "fix", "feature"]
+    },
+    {
+        "version": "v0.2",
+        "date": "2026-02-01",
+        "title": "data_fetcher auto_adjust 적용 + MultiIndex 대응",
+        "desc": "로컬/클라우드 데이터 불일치 문제 해결. yfinance 최신 버전 MultiIndex 구조 완벽 대응",
+        "tags": ["fix", "improve"]
+    },
+    {
+        "version": "v0.1",
+        "date": "2026-01-01",
+        "title": "최초 배포",
+        "desc": "섹터 ETF S-L 스코어, 개별 종목 추적, 11개 핵심 섹터 분석 기능 론칭",
+        "tags": ["feature"]
+    }
+]
+
+TAG_CONFIG = {
+    "fix":     ("🔴 버그수정", "tag-fix"),
+    "feature": ("🟢 신기능",   "tag-feature"),
+    "improve": ("🔵 개선",     "tag-improve"),
+    "mobile":  ("🟡 모바일",   "tag-mobile"),
+}
+
+def load_updates():
+    try:
+        if os.path.exists(UPDATE_FILE):
+            with open(UPDATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return DEFAULT_UPDATES
+
+def save_updates(updates):
+    try:
+        with open(UPDATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(updates, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
+
+# 업데이트 추가 폼 (관리자용 - 비밀번호 보호)
+with st.expander("➕ 새 업데이트 기록 추가 (관리자)", expanded=False):
+    admin_pw = st.text_input("관리자 비밀번호", type="password", key="admin_pw")
+    if admin_pw == "jeff1234":   # ← 원하시는 비밀번호로 변경하세요!
+        with st.form("update_form", clear_on_submit=True):
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                new_version = st.text_input("버전", placeholder="v0.4")
+            with c2:
+                new_date = st.text_input("날짜", value=datetime.now().strftime("%Y-%m-%d"))
+            new_title = st.text_input("제목", placeholder="업데이트 제목")
+            new_desc  = st.text_area("설명", placeholder="변경 내용을 입력하세요", height=80)
+            new_tags  = st.multiselect("태그", ["fix", "feature", "improve", "mobile"])
+            add_btn   = st.form_submit_button("📝 기록 추가", use_container_width=True)
+
+            if add_btn:
+                if not new_title.strip():
+                    st.warning("제목을 입력해주세요!")
+                else:
+                    updates = load_updates()
+                    updates.insert(0, {
+                        "version": new_version.strip() or "v?",
+                        "date":    new_date.strip(),
+                        "title":   new_title.strip(),
+                        "desc":    new_desc.strip(),
+                        "tags":    new_tags
+                    })
+                    if save_updates(updates):
+                        st.success("✅ 업데이트 기록이 추가되었습니다!")
+                    else:
+                        st.error("저장 실패!")
+    elif admin_pw:
+        st.error("비밀번호가 틀렸습니다.")
+
+# 업데이트 목록 표시
+updates = load_updates()
+for u in updates:
+    tags_html = "".join(
+        f'<span class="tag {TAG_CONFIG.get(t, ("",""))[1]}">{TAG_CONFIG.get(t, (t,""))[0]}</span>'
+        for t in u.get("tags", [])
+    )
+    st.markdown(f"""
+<div class="update-card">
+    <div class="update-version">{u['version']}</div>
+    <div class="update-date">📅 {u['date']}</div>
+    <div class="update-title">🔧 {u['title']}</div>
+    <div class="update-desc">{u['desc']}</div>
+    <div style="margin-top:6px;">{tags_html}</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ============================
+# [5] 방문자 댓글 게시판
+# ============================
+st.markdown("### 💬 방문자 의견 게시판")
+st.caption("시장 의견, 기능 제안, 자유로운 생각을 남겨주세요!")
 
 COMMENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
 
@@ -123,7 +285,8 @@ def load_comments():
         if os.path.exists(COMMENT_FILE):
             with open(COMMENT_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-    except: pass
+    except Exception:
+        pass
     return []
 
 def save_comments(comments):
@@ -131,64 +294,44 @@ def save_comments(comments):
         with open(COMMENT_FILE, "w", encoding="utf-8") as f:
             json.dump(comments, f, ensure_ascii=False, indent=2)
         return True
-    except: return False
+    except Exception:
+        return False
 
-# 댓글 작성 폼
 with st.form("comment_form", clear_on_submit=True):
-    c_col1, c_col2 = st.columns([1, 2])
-    with c_col1:
-        nick = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
-    with c_col2:
+    col_a, col_b = st.columns([1, 2])
+    with col_a:
+        nickname = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
+    with col_b:
         mood = st.selectbox("시장 분위기", ["😐 중립", "🐂 강세", "🐻 약세", "🤔 관망", "🚀 폭발"])
-    
-    # ⭐ 제자님 요청: 페이지 관련 자유로운 의견 안내 추가
-    text = st.text_area("의견 작성", 
-                        placeholder="시황 분석이나 연구소 페이지 기능 개선 등 자유로운 의견을 남겨주세요 📝", 
-                        max_chars=300, height=100)
-    
-    if st.form_submit_button("💬 의견 등록하기", use_container_width=True):
-        if text.strip():
-            cms = load_comments()
-            cms.insert(0, {
-                "nickname": nick.strip() or "익명 투자자", 
-                "mood": mood, 
-                "text": text.strip(), 
-                "time": datetime.now().strftime("%Y-%m-%d %H:%M")
+    comment_text = st.text_area("의견", placeholder="시장 분석, 기능 제안, 자유로운 의견 환영합니다 📝  (최대 300자)", max_chars=300, height=90)
+    if st.form_submit_button("💬 댓글 등록", use_container_width=True):
+        if not comment_text.strip():
+            st.warning("내용을 입력해주세요!")
+        else:
+            comments = load_comments()
+            comments.insert(0, {
+                "nickname": nickname.strip() or "익명 투자자",
+                "mood":     mood,
+                "text":     comment_text.strip(),
+                "time":     datetime.now().strftime("%Y-%m-%d %H:%M")
             })
-            if save_comments(cms[:100]):
-                st.success("✅ 소중한 의견이 등록되었습니다!")
-                st.rerun()
+            if save_comments(comments[:100]):
+                st.success("✅ 등록되었습니다!")
+            else:
+                st.error("저장 실패.")
 
-# [8] 댓글 목록 및 관리 (삭제 기능 유지)
-cms = load_comments()
-for idx, c in enumerate(cms):
-    col_text, col_del = st.columns([9, 1])
-    with col_text:
+comments = load_comments()
+if comments:
+    st.markdown(f"**총 {len(comments)}개 의견**")
+    for c in comments:
         st.markdown(f"""
-        <div class="comment-card">
-            <div class="comment-meta">🙋 <b>{c['nickname']}</b> · {c.get('mood', '')} · {c['time']}</div>
-            {c['text']}
-        </div>
-        """, unsafe_allow_html=True)
-    with col_del:
-        if st.button("🗑️", key=f"btn_del_{idx}"):
-            st.session_state[f"confirm_delete_{idx}"] = True
-
-    if st.session_state.get(f"confirm_delete_{idx}"):
-        with st.container():
-            pwd = st.text_input("관리자 비번", type="password", key=f"pwd_{idx}")
-            c1, c2 = st.columns(2)
-            if c1.button("확인", key=f"ok_{idx}"):
-                if pwd == ADMIN_PASSWORD:
-                    new_cms = [v for i, v in enumerate(cms) if i != idx]
-                    if save_comments(new_cms):
-                        st.success("삭제 완료")
-                        del st.session_state[f"confirm_delete_{idx}"]
-                        st.rerun()
-                else: st.error("비번 불일치")
-            if c2.button("취소", key=f"cancel_{idx}"):
-                del st.session_state[f"confirm_delete_{idx}"]
-                st.rerun()
+<div class="comment-card">
+    <div class="comment-meta">🙋 <b>{c['nickname']}</b> · {c.get('mood','')} · {c['time']}</div>
+    {c['text']}
+</div>
+""", unsafe_allow_html=True)
+else:
+    st.info("아직 등록된 의견이 없습니다. 첫 번째 의견을 남겨보세요! 🎉")
 
 st.markdown("---")
 st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")

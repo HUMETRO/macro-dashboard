@@ -21,19 +21,22 @@ except ImportError as e:
 
 st.set_page_config(page_title="매크로 위험알리미", page_icon="📊", layout="wide")
 
-# 🎨 CSS (선생님 원본 카드 스타일 유지 + 모바일 반응형 추가)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
+
+/* ✅ 수정1: 모바일 상단 메뉴바에 제목 가림 방지 - 상단 패딩 추가 */
+.block-container {
+    padding-top: 3.5rem !important;
+}
 
 .metric-card {
     background-color: #ffffff;
     border-radius: 8px;
     padding: 10px;
     border: 1px solid #e5e7eb;
-    margin-bottom: 5px;
-    min-height: 95px;
+    margin-bottom: 8px;
     min-width: 0;
     word-break: break-word;
 }
@@ -42,14 +45,14 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 .wait-signal { border-left: 5px solid #f59e0b; background-color: #fffbeb; }
 
 .ticker-header { font-size: 0.85rem; font-weight: 700; color: #111827 !important; margin-bottom: 2px; }
-.score-box     { font-size: 0.75rem; color: #374151 !important; line-height: 1.4; }
+.score-box     { font-size: 0.75rem; color: #374151 !important; line-height: 1.5; }
 
-/* ✅ 모바일 대응 */
+/* ✅ 수정2: 모바일에서 카드 글씨 조정 */
 @media (max-width: 640px) {
-    .block-container { padding: 0.8rem 0.6rem !important; }
+    .block-container { padding-top: 4rem !important; }
     h1 { font-size: 1.2rem !important; }
-    .ticker-header { font-size: 0.8rem; }
-    .score-box     { font-size: 0.72rem; }
+    .ticker-header { font-size: 0.78rem; }
+    .score-box     { font-size: 0.7rem; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -79,8 +82,7 @@ if not df_sectors.empty and 'L-score' in df_sectors.columns:
         if   avg_l > 0 and avg_s > 0: st.success("✅ 매수 신호 (상승장)")
         elif avg_l < 0 and avg_s < 0: st.error("🚨 도망챠! (하락장)")
         else:                          st.warning("⚠️ 관망 (방향 탐색)")
-
-    st.caption("💡 시장 상태 판별 기준: 전체 평균 장기/단기 스코어가 모두 0보다 크면 '매수', 모두 0보다 작으면 '도망챠!', 그 외는 '관망'입니다. 객관적인 숫자를 믿으십시오.")
+    st.caption("💡 L/S 스코어가 모두 양수면 매수, 모두 음수면 도망챠!, 그 외는 관망. 객관적인 숫자를 믿으십시오.")
 else:
     st.error("🚨 데이터 계산 오류 발생!")
 
@@ -95,14 +97,11 @@ elif safe_count == 1:
     st.warning("⚠️ **안전자산 상승 주의:** 상위 5위권 내에 방어적 자산이 포착되었습니다. 시장의 변동성에 대비하십시오.")
 
 st.markdown("---")
-
-# ✅ 모바일 이용자 안내
 st.info("📱 모바일에서 표가 잘리면 **테이블을 좌우로 스크롤**하거나 **카드 뷰**를 이용하세요!")
 
-# [6] 메인 탭 구성
+# [6] 메인 탭
 tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개 핵심 섹터"])
 
-# ──────────────────────────────────────────────────
 with tab1:
     st.subheader("📈 섹터 ETF 스코어 (S-L 순위)")
     sub_t, sub_c = st.tabs(["📑 테이블 뷰 (정밀 분석)", "🎴 카드 뷰 (기세 확인)"])
@@ -125,35 +124,67 @@ with tab1:
         )
 
     with sub_c:
-        # ✅ 데스크탑 4열 유지 (선생님 원본)
-        cols = st.columns(4)
-        for idx, row in df_sectors.iterrows():
-            with cols[idx % 4]:
-                sig  = "buy-signal"  if (row['S-score'] > 0 and row['L-score'] > 0) else \
-                       "sell-signal" if (row['S-score'] < 0 and row['L-score'] < 0) else "wait-signal"
-                icon = "✅" if sig == "buy-signal" else ("🚨" if sig == "sell-signal" else "⚠️")
+        # ✅ 수정2: 신호별 색깔 순서 정렬 (🟢매수 → 🟡관망 → 🔴매도)
+        def get_signal(row):
+            if row['S-score'] > 0 and row['L-score'] > 0:
+                return 0  # 매수 (상위)
+            elif row['S-score'] < 0 and row['L-score'] < 0:
+                return 2  # 매도 (하위)
+            return 1      # 관망 (중간)
+
+        df_card = df_sectors.copy()
+        df_card['_sig_order'] = df_card.apply(get_signal, axis=1)
+        # 신호 순서 기준 정렬, 같은 신호 내에서는 S-L 점수 순
+        df_card = df_card.sort_values(['_sig_order', 'S-L'], ascending=[True, False]).reset_index(drop=True)
+
+        # 신호 그룹 구분선 표시
+        current_sig = -1
+        sig_labels  = {0: "✅ 매수 신호", 1: "⚠️ 관망", 2: "🚨 매도 신호"}
+        sig_colors  = {0: "#d1fae5", 1: "#fef9c3", 2: "#fee2e2"}
+
+        # ✅ 수정2: 2열 그리드로 모바일 가독성 향상
+        cols = st.columns(2)
+        col_idx = 0
+
+        for _, row in df_card.iterrows():
+            sig_order = row['_sig_order']
+
+            # 신호 그룹이 바뀔 때 구분 헤더 삽입 (전체 너비)
+            if sig_order != current_sig:
+                current_sig = sig_order
+                st.markdown(
+                    f"<div style='background:{sig_colors[sig_order]}; padding:6px 12px; "
+                    f"border-radius:6px; font-weight:700; font-size:0.82rem; "
+                    f"margin: 10px 0 6px 0;'>{sig_labels[sig_order]}</div>",
+                    unsafe_allow_html=True
+                )
+                col_idx = 0  # 새 그룹 시작 시 왼쪽 열부터
+                cols = st.columns(2)
+
+            sig_class = ["buy-signal", "wait-signal", "sell-signal"][sig_order]
+            icon      = ["✅", "⚠️", "🚨"][sig_order]
+
+            with cols[col_idx % 2]:
                 st.markdown(f"""
-<div class="metric-card {sig}">
-    <div class="ticker-header">{icon} {row['섹터']} ({row['티커']})</div>
+<div class="metric-card {sig_class}">
+    <div class="ticker-header">{icon} {row['섹터']} <span style='color:#9ca3af;font-weight:400;'>({row['티커']})</span></div>
     <div class="score-box">
         <b>S-L: {row['S-L']:.3f}</b> | <b>{row['20일(%)']:.2f}%</b><br>
-        L: {row['L-score']:.3f} / S: {row['S-score']:.3f}
+        L: {row['L-score']:.3f} &nbsp;/&nbsp; S: {row['S-score']:.3f}
     </div>
 </div>
 """, unsafe_allow_html=True)
+            col_idx += 1
 
-    # 지표 설명 (원본 문구 100% 유지)
+    # 지표 설명
     st.markdown("##### 💡 퀀트 지표 핵심 요약")
     st.caption("**📊 L-score (장기 체력)**: 200일선 이격도, 52주 고점 위치 등을 종합한 장기 추세 점수입니다.")
     st.caption("**🚀 S-score (단기 기세)**: 20일선 이격도, 1개월 수익률 등을 종합한 단기 모멘텀 점수입니다.")
     st.caption("---")
     st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
-    st.caption("2️⃣ **미너비니 절대 추세 필터 (랭킹 보정)**")
-    st.caption("- 단기 추세(S-score)가 마이너스(-)인 섹터는 '하락 추세 속의 일시적 반등'일 뿐입니다.")
-    st.caption("- 이런 '떨어지는 칼날'은 가짜 신호로 간주하여 순위표 최하위권으로 강제 강등시켰습니다.")
+    st.caption("2️⃣ **미너비니 절대 추세 필터:** S-score < 0 이면 '떨어지는 칼날'로 간주, 순위 최하위로 강제 강등합니다.")
     st.caption("3️⃣ **20일(%):** 최근 1개월간의 실제 수익률 성적표입니다.")
 
-# ──────────────────────────────────────────────────
 with tab2:
     st.subheader("💹 개별 종목 추적 (위험도별 분류)")
     st.dataframe(
@@ -175,7 +206,6 @@ with tab2:
     )
     st.caption("💡 배경색 의미: 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
 
-# ──────────────────────────────────────────────────
 with tab3:
     st.subheader("🎯 11개 핵심 섹터 현황")
     st.dataframe(
@@ -185,7 +215,7 @@ with tab3:
         use_container_width=True, height=450
     )
 
-# [7] 차트 (MultiIndex 완벽 대응)
+# [7] 차트
 st.markdown("---")
 selected = st.selectbox("📉 상세 분석 차트 선택", list(all_data['sector_etfs'].keys()))
 
@@ -193,13 +223,11 @@ if selected:
     hist   = all_data['sector_etfs'][selected]['history'].copy()
     ticker = all_data['sector_etfs'][selected]['ticker']
 
-    # ✅ MultiIndex 정규화
     if isinstance(hist.columns, pd.MultiIndex):
         hist.columns = hist.columns.get_level_values(0)
 
     date_list = hist.index.tolist()
 
-    # ✅ 1D 배열 보장 헬퍼
     def to_1d(col):
         s = hist[col]
         if isinstance(s, pd.DataFrame):
@@ -207,20 +235,11 @@ if selected:
         return s.values.flatten()
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=date_list, y=to_1d('Close'),
-        name='종가', line=dict(color='blue', width=2)
-    ))
-    if 'MA20' in hist.columns:
-        fig.add_trace(go.Scatter(
-            x=date_list, y=to_1d('MA20'),
-            name='MA20', line=dict(dash='dash', color='orange')
-        ))
+    fig.add_trace(go.Scatter(x=date_list, y=to_1d('Close'), name='종가', line=dict(color='blue', width=2)))
+    if 'MA20'  in hist.columns:
+        fig.add_trace(go.Scatter(x=date_list, y=to_1d('MA20'),  name='MA20',  line=dict(dash='dash', color='orange')))
     if 'MA200' in hist.columns:
-        fig.add_trace(go.Scatter(
-            x=date_list, y=to_1d('MA200'),
-            name='MA200', line=dict(dash='dot', color='green', width=2)
-        ))
+        fig.add_trace(go.Scatter(x=date_list, y=to_1d('MA200'), name='MA200', line=dict(dash='dot',  color='green', width=2)))
 
     view_days = min(len(hist), 500)
     fig.update_layout(

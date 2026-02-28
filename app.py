@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # 🔒 관리자 비밀번호 (원하는 숫자로 수정하세요!)
-ADMIN_PASSWORD = "3918"
+ADMIN_PASSWORD = "1234"
 
 # [2] 스타일 시트 (모바일 최적화 및 디자인)
 st.markdown("""

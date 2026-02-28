@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="V8 통합 하이브리드 검증", page_icon="🚦", layout="wide")
+st.set_page_config(page_title="V8 최종 하이브리드 검증", page_icon="🚦", layout="wide")
 
 # ── 스타일 설정 ──
 st.markdown("""
@@ -18,34 +18,32 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚦 V8 하이브리드: 통합 지표 및 위기검증")
-st.caption("레버리지 수익률 오류를 수정하고, MDD 비교 및 7대 경제위기 검증 데이터를 완벽히 복구했습니다.")
+st.title("🚦 V8 최종 하이브리드: 레버리지 안정화 버전")
+st.caption("레버리지 종목의 상장 전 데이터 공백에 따른 수익률 오류를 완벽히 해결한 최종 모델입니다.")
 
-# ── 7대 역사적 위기 리스트 완벽 복구 ──
+# ── 7대 역사적 위기 리스트 (데이터가 있는 경우에만 표시됨) ──
 EVENTS = [
-    {"date": "2000-03-24", "name": "닷컴버블 붕괴", "type": "danger", "desc": "나스닥 -80% 하락. 조기경보의 속도 테스트"},
-    {"date": "2008-09-15", "name": "리먼 브라더스 파산", "type": "danger", "desc": "금융위기 정점. 200일선 붕괴 대응력"},
-    {"date": "2009-03-09", "name": "금융위기 대바닥", "type": "safe", "desc": "공포 속의 역발상 매수(Purple) 타점"},
-    {"date": "2011-08-08", "name": "미국 신용등급 강등", "type": "danger", "desc": "단기 폭락장 속 세이프가드 작동 여부"},
+    {"date": "2000-03-24", "name": "닷컴버블 붕괴", "type": "danger", "desc": "나스닥 -80% 하락 대피 테스트"},
+    {"date": "2008-09-15", "name": "리먼 브라더스 파산", "type": "danger", "desc": "금융위기 정점 대응력"},
+    {"date": "2009-03-09", "name": "금융위기 대바닥", "type": "safe", "desc": "공포 속의 역발상 매수(Purple)"},
+    {"date": "2011-08-08", "name": "미국 신용등급 강등", "type": "danger", "desc": "단기 폭락장 세이프가드 작동"},
     {"date": "2018-12-24", "name": "미중 무역전쟁 바닥", "type": "safe", "desc": "하락 추세 끝자락의 매수 신호"},
-    {"date": "2020-02-24", "name": "코로나 팬데믹 쇼크", "type": "danger", "desc": "VIX Spike 조기경보의 결정적 구간"},
-    {"date": "2022-01-05", "name": "인플레이션 하락장", "type": "danger", "desc": "1년 내내 이어진 금리인상기 회피력"}
+    {"date": "2020-02-24", "name": "코로나 팬데믹 쇼크", "type": "danger", "desc": "VIX Spike 조기경보의 핵심"},
+    {"date": "2022-01-05", "name": "인플레이션 하락장", "type": "danger", "desc": "1년 내내 이어진 하락장 회피"}
 ]
 
-# ── 데이터 로딩 ──
+# ── 데이터 로딩 (공백 방지 로직 강화) ──
 @st.cache_data(ttl=3600, show_spinner=False)
-def load_v8_final_data(ticker, start_year):
-    # 수익률 폭주 방지를 위해 데이터를 더 정밀하게 가져옴
+def load_safe_data(ticker, start_year):
     fetch_start = f"{start_year - 1}-01-01"
     df = yf.download(ticker, start=fetch_start, interval='1d', progress=False)
     if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-    df = df[['Close']].rename(columns={'Close': 'Close'})
+    df = df[['Close']].dropna()
     
     vix = yf.download("^VIX", start=fetch_start, progress=False)
     ovx = yf.download("^OVX", start=fetch_start, progress=False)
     tnx = yf.download("^TNX", start=fetch_start, progress=False)
     irx = yf.download("^IRX", start=fetch_start, progress=False)
-    
     for d in [vix, ovx, tnx, irx]:
         if isinstance(d.columns, pd.MultiIndex): d.columns = d.columns.get_level_values(0)
         
@@ -59,17 +57,17 @@ def load_v8_final_data(ticker, start_year):
     
     combined['OVX'] = combined['OVX'].fillna(30)
     combined['Spread'] = combined['Spread'].fillna(1.0)
+    # 데이터가 실제로 있는 구간만 슬라이싱 (여기서 오류 차단)
     return combined.dropna(subset=['Close', 'VIX', 'MA200']).tz_localize(None)
 
 # ── 판정 로직 ──
-def calculate_v8_logic(df, ticker):
+def calculate_signals(df, ticker):
     df = df.copy()
     is_lev = any(x in ticker for x in ["TQQQ", "QLD", "SOXL", "UPRO"])
     
     def get_status(row):
         c, m20, m50, m200 = row['Close'], row['MA20'], row['MA50'], row['MA200']
         v, v_ma5, o, s = row['VIX'], row['VIX_MA5'], row['OVX'], row['Spread']
-        
         mult = 2.5 if (is_lev and c < m50) else (2.0 if c < m50 else 1.0)
         pen = ((1.0 * max(0, v - 25)) + (1.2 * max(0, o - 35)) + (20 if s < -0.5 else 0)) * mult
         cms = 100 - pen
@@ -80,7 +78,6 @@ def calculate_v8_logic(df, ticker):
             if c < m20 or v_spike: return '⚠️초정밀경보(Turbo)', cms
         else:
             if c < m50 or v_spike: return '🟡조기경보(Yellow)', cms
-
         if cms >= 55: return '🟢매수(Green)', cms
         if c < (m200 * 0.90): return '🔥역발상매수', cms
         return '🟡안전관망(Yellow)', cms
@@ -89,9 +86,13 @@ def calculate_v8_logic(df, ticker):
     df['신호'], df['CMS'] = res[0], res[1]
     return df
 
-# ── 수익률 계산 로직 (수익률 폭주 수정) ──
-def calc_final_performance(df, ticker, start_year):
-    df = df[df.index >= f"{start_year}-01-01"].copy()
+# ── 성과 계산 ──
+def calc_safe_performance(df, ticker, start_year):
+    # 실제 데이터가 시작되는 시점부터 계산
+    actual_start = df.index[df.index >= f"{start_year}-01-01"]
+    if len(actual_start) == 0: return None
+    df = df[df.index >= actual_start[0]].copy()
+    
     df['daily_ret'] = df['Close'].pct_change().fillna(0)
     is_lev = any(x in ticker for x in ["TQQQ", "QLD", "SOXL", "UPRO"])
 
@@ -108,7 +109,6 @@ def calc_final_performance(df, ticker, start_year):
     
     for i in range(len(df)):
         exp, d_ret = df['base_exp'].iloc[i], df['daily_ret'].iloc[i]
-        # ⚠️ 수익률 폭주 방지를 위해 로그 수익률 대신 단순 수익률 적용
         cur_cum *= (1 + d_ret * exp)
         if cur_cum > max_cum: max_cum = cur_cum
         dd = (cur_cum / max_cum) - 1
@@ -121,52 +121,43 @@ def calc_final_performance(df, ticker, start_year):
     df['cum_bah'] = (1 + df['daily_ret']).cumprod()
     return df
 
-# ── 화면 렌더링 ──
+# ── 메인 실행 ──
 ticker = st.selectbox("종목 선택", ["QQQ", "SOXX", "TQQQ", "SOXL", "SPY"])
 start_year = st.selectbox("시작 연도", [2000, 2010, 2020])
 
-raw = load_v8_final_data(ticker, start_year)
-sig_df = calculate_v8_logic(raw, ticker)
-perf_df = calc_final_performance(sig_df, ticker, start_year)
+raw_data = load_safe_data(ticker, start_year)
+sig_df = calculate_signals(raw_data, ticker)
+perf_df = calc_safe_performance(sig_df, ticker, start_year)
 
-# 지표 요약 (MDD 비교 복구)
-f_strat, f_bah = (perf_df['cum_strat'].iloc[-1]-1)*100, (perf_df['cum_bah'].iloc[-1]-1)*100
-mdd_strat = (perf_df['cum_strat']/perf_df['cum_strat'].cummax()-1).min()*100
-mdd_bah = (perf_df['cum_bah']/perf_df['cum_bah'].cummax()-1).min()*100
+if perf_df is not None:
+    f_strat, f_bah = (perf_df['cum_strat'].iloc[-1]-1)*100, (perf_df['cum_bah'].iloc[-1]-1)*100
+    mdd_strat = (perf_df['cum_strat']/perf_df['cum_strat'].cummax()-1).min()*100
+    mdd_bah = (perf_df['cum_bah']/perf_df['cum_bah'].cummax()-1).min()*100
 
-st.markdown("#### 📊 전략 성과 리포트 (MDD 방어력 비교)")
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("전략 수익률", f"{f_strat:,.1f}%", delta=f"{f_strat - f_bah:,.1f}%p")
-m2.metric("존버(B&H) 수익률", f"{f_bah:,.1f}%")
-m3.metric("전략 MDD", f"{mdd_strat:.1f}%", delta=f"B&H대비 {abs(mdd_bah)-abs(mdd_strat):.1f}%p 우수", delta_color="normal")
-m4.metric("존버(B&H) MDD", f"{mdd_bah:.1f}%")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("전략 수익률", f"{f_strat:,.1f}%", delta=f"{f_strat - f_bah:,.1f}%p")
+    m2.metric("존버(B&H) 수익률", f"{f_bah:,.1f}%")
+    m3.metric("전략 MDD", f"{mdd_strat:.1f}%", delta=f"B&H대비 {abs(mdd_bah)-abs(mdd_strat):.1f}%p 우수")
+    m4.metric("존버(B&H) MDD", f"{mdd_bah:.1f}%")
 
-# 차트
-fig = make_subplots(rows=2, cols=1, row_heights=[0.7, 0.3], shared_xaxes=True)
-fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['Close'], name='Price'), row=1, col=1)
-fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['MA200'], name='200일선', line=dict(dash='dash', color='orange')), row=1, col=1)
-fig.add_trace(go.Scatter(x=perf_df.index, y=(perf_df['cum_strat']-1)*100, name='전략 수익률'), row=2, col=1)
-fig.add_trace(go.Scatter(x=perf_df.index, y=(perf_df['cum_bah']-1)*100, name='존버 수익률', line=dict(dash='dot', color='gray')), row=2, col=1)
-st.plotly_chart(fig, use_container_width=True)
+    # 차트
+    fig = make_subplots(rows=2, cols=1, row_heights=[0.7, 0.3], shared_xaxes=True)
+    fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['Close'], name='Price'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=perf_df.index, y=(perf_df['cum_strat']-1)*100, name='전략'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=perf_df.index, y=(perf_df['cum_bah']-1)*100, name='B&H', line=dict(dash='dot')), row=2, col=1)
+    st.plotly_chart(fig, use_container_width=True)
 
-# 역사적 위기 검증표 (7대 위기 완벽 복구)
-st.markdown("---")
-st.markdown("#### 🎯 7대 경제위기 회피 검증 (V8 통합)")
-ev_cols = st.columns(2)
-for i, ev in enumerate(EVENTS):
-    ev_date = pd.Timestamp(ev['date'])
-    available = perf_df.index[perf_df.index >= ev_date]
-    if len(available) == 0: continue
-    row = perf_df.loc[available[0]]
-    sig = row['신호']
-    sig_color = "red" if "철수" in sig else ("orange" if "경보" in sig or "관망" in sig else "green")
-    if "역발상" in sig: sig_color = "purple"
-    
-    with ev_cols[i % 2]:
-        st.markdown(f"""
-<div class="event-card {'ev-safe' if ev['type']=='safe' else 'ev-danger'}">
-    <b>📅 {ev['date']} | {ev['name']}</b><br>
-    당시 신호: <span style="color:{sig_color}; font-weight:800;">{sig}</span><br>
-    <small>CMS 점수: {row['CMS']:.1f}점 | {ev['desc']}</small>
-</div>
-""", unsafe_allow_html=True)
+    # 🎯 위기 검증표 (종목 데이터가 존재하는 기간만 표시)
+    st.markdown("#### 🎯 역사적 위기 회피 검증")
+    ev_cols = st.columns(2)
+    for i, ev in enumerate(EVENTS):
+        ev_date = pd.Timestamp(ev['date'])
+        if ev_date < perf_df.index[0]: continue
+        row = perf_df.loc[perf_df.index >= ev_date].iloc[0]
+        sig = row['신호']
+        sig_color = "red" if "철수" in sig else ("orange" if "경보" in sig or "관망" in sig else "green")
+        if "역발상" in sig: sig_color = "purple"
+        with ev_cols[i % 2]:
+            st.markdown(f'<div class="event-card {"ev-safe" if ev["type"]=="safe" else "ev-danger"}"><b>📅 {ev["date"]} | {ev["name"]}</b><br>신호: <span style="color:{sig_color}; font-weight:800;">{sig}</span><br><small>{ev["desc"]}</small></div>', unsafe_allow_html=True)
+else:
+    st.error("선택한 연도에는 해당 종목의 데이터가 없습니다. 시작 연도를 조정해 주세요!")

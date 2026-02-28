@@ -29,11 +29,10 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🔬 위험알리미 신호 백테스트 (VIX 방어 탑재)")
-st.caption("과거 데이터에 S-L 스코어와 VIX(공포지수) 로직을 결합하여 매수/도망챠 신호의 신뢰도를 검증합니다.")
+st.title("🔬 위험알리미 신호 백테스트 (현실 검증판)")
+st.caption("타임머신 오류를 제거한 100% 현실적인 백테스트로, 매수/도망챠 신호의 신뢰도를 냉철하게 검증합니다.")
 st.markdown("---")
 
-# 💡 닷컴버블부터 트럼프 관세까지 완벽 정리!
 EVENTS = [
     {"date": "2000-03-24", "name": "닷컴버블 붕괴 시작", "type": "danger", "desc": "나스닥 고점 형성 후 200일선 붕괴. -80% 지옥의 시작"},
     {"date": "2002-10-09", "name": "닷컴버블 최저점", "type": "safe", "desc": "거품이 완전히 꺼진 후 형성된 역사적 대바닥"},
@@ -84,8 +83,8 @@ def calculate_signals(df):
 
     def get_sig(row):
         l, s, v = row['L'], row['S'], row['VIX']
-        if v >= 30: return '도망챠'  # VIX 강제 탈출 필터
-        if s < 0: return '도망챠'    # 미너비니 필터
+        if v >= 30: return '도망챠'  
+        if s < 0: return '도망챠'    
         if l > 0 and s > 0: return '매수'
         if l < 0 and s < 0: return '도망챠'
         return '관망'
@@ -107,7 +106,10 @@ def find_signal_changes(df):
 def calc_strategy_return(df):
     df = df.copy()
     df['daily_ret'] = df['Close'].pct_change().fillna(0)
-    df['invested'] = (df['신호'] == '매수').astype(int)
+    
+    # 💡 [핵심 수정] 타임머신 오류 해결: "어제" 장 마감 때 나온 신호로 "오늘" 투자한다! (.shift(1))
+    df['invested'] = (df['신호'] == '매수').shift(1).fillna(0).astype(int)
+    
     df['strat_ret'] = df['daily_ret'] * df['invested']
     df['cum_bah'] = (1 + df['daily_ret']).cumprod()
     df['cum_strat'] = (1 + df['strat_ret']).cumprod()
@@ -119,10 +121,9 @@ with col_opt1:
     selected_name = st.selectbox("분석 종목", list(ticker_map.keys()))
     ticker = ticker_map[selected_name]
 with col_opt2:
-    # 💡 2000년 옵션 추가!
     start_year = st.selectbox("시작 연도", [2000, 2005, 2008, 2010, 2015, 2020], index=0)
 
-with st.spinner("📡 퀀트 엔진 백테스트 구동 중... (데이터 다운로드에 약간의 시간이 소요될 수 있습니다)"):
+with st.spinner("📡 현실 퀀트 엔진 백테스트 구동 중..."):
     raw_df = load_backtest_data(ticker, start_year)
 
 if raw_df.empty or len(raw_df) < 300:
@@ -138,7 +139,7 @@ final_strat = round((perf_df['cum_strat'].iloc[-1] - 1) * 100, 1)
 mdd_bah     = round(((perf_df['cum_bah']   / perf_df['cum_bah'].cummax()   - 1).min()) * 100, 1)
 mdd_strat   = round(((perf_df['cum_strat'] / perf_df['cum_strat'].cummax() - 1).min()) * 100, 1)
 
-st.markdown("#### 📊 전략 성과 요약 (VIX 30 돌파 시 강제 회피 룰 적용)")
+st.markdown("#### 📊 전략 성과 요약 (현실 데이터 반영)")
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("신호전략 수익률", f"{final_strat:+.1f}%")
 m2.metric("바이앤홀드 수익률", f"{final_bah:+.1f}%")
@@ -196,7 +197,7 @@ for i, ev in enumerate(EVENTS):
     ret_90 = f"{((sig_df.loc[fut_90[0],'Close'] / row['Close'] - 1)*100):.1f}%" if len(fut_90) else "N/A"
 
     verdict = ""
-    if ev['type'] == 'danger' and sig == '도망챠': verdict = "✅ 위기 회피 성공"
+    if ev['type'] == 'danger' and sig == '도망챠': verdict = "✅ 위기 회피 성공 (기계적 손절)"
     elif ev['type'] == 'danger' and sig == '매수': verdict = "❌ 위기 미감지 (투자 중)"
     elif ev['type'] == 'danger' and sig == '관망': verdict = "⚠️ 관망 중 (부분 회피)"
     elif ev['type'] == 'safe'   and sig == '매수': verdict = "✅ 상승 탑승 성공"

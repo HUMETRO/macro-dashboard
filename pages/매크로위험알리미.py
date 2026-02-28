@@ -21,7 +21,7 @@ except ImportError as e:
 
 st.set_page_config(page_title="매크로 위험알리미", page_icon="📊", layout="wide")
 
-# 🎨 카드형 스타일 CSS
+# 🎨 카드형 스타일 CSS (글씨 색상 보강)
 st.markdown("""
     <style>
     .metric-card {
@@ -32,11 +32,23 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         margin-bottom: 10px;
     }
-    .buy-signal { border-left: 5px solid #28a745; background-color: #f8fff9; }
-    .sell-signal { border-left: 5px solid #dc3545; background-color: #fff8f8; }
-    .wait-signal { border-left: 5px solid #ffc107; background-color: #fffdf5; }
-    .ticker-header { font-size: 1rem; font-weight: bold; margin-bottom: 5px; }
-    .score-box { font-size: 0.8rem; color: #444; }
+    .buy-signal { border-left: 5px solid #28a745; background-color: #f0fff4; }
+    .sell-signal { border-left: 5px solid #dc3545; background-color: #fff5f5; }
+    .wait-signal { border-left: 5px solid #ffc107; background-color: #fffdf0; }
+    
+    /* 💡 글씨 색상을 짙은 회색(#1f2937)으로 고정하여 가독성 확보 */
+    .ticker-header { 
+        font-size: 1rem; 
+        font-weight: bold; 
+        margin-bottom: 5px; 
+        color: #1f2937 !important; 
+    }
+    .score-box { 
+        font-size: 0.85rem; 
+        color: #374151 !important; 
+        line-height: 1.4;
+    }
+    .ticker-sub { color: #6b7280 !important; font-size: 0.8rem; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -86,8 +98,6 @@ tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개
 
 with tab1:
     st.subheader("📈 섹터 ETF 분석")
-    
-    # 카드 뷰와 테이블 뷰를 선택해서 볼 수 있게 하위 탭 구성
     sub_tab1, sub_tab2 = st.tabs(["🎴 카드 뷰", "📑 테이블 뷰"])
     
     with sub_tab1:
@@ -98,7 +108,7 @@ with tab1:
                       "sell-signal" if row['S-score'] < 0 and row['L-score'] < 0 else "wait-signal"
                 st.markdown(f"""
                     <div class="metric-card {sig}">
-                        <div class="ticker-header">{row['섹터']} <small style='color:gray;'>{row['티커']}</small></div>
+                        <div class="ticker-header">{row['섹터']} <span class="ticker-sub">({row['티커']})</span></div>
                         <div class="score-box">
                             <b>S-L: {row['S-L']}</b> | 20일: {row['20일(%)']}%<br>
                             L: {row['L-score']} / S: {row['S-score']}
@@ -118,15 +128,12 @@ with tab1:
                      .format({'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'}),
                      use_container_width=True, height=500)
 
-    # ⭐ [사라졌던 문구 복구!]
     st.markdown("##### 💡 퀀트 지표 핵심 요약")
     st.caption("**📊 L-score (장기 체력)**: 200일선 이격도, 52주 고점 위치 등을 종합한 장기 추세 점수입니다.")
     st.caption("**🚀 S-score (단기 기세)**: 20일선 이격도, 1개월 수익률 등을 종합한 단기 모멘텀 점수입니다.")
     st.caption("---")
-    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
-    st.caption("2️⃣ **미너비니 절대 추세 필터 (랭킹 보정)**")
-    st.caption("- 단기 추세(S-score)가 마이너스(-)인 섹터는 '하락 추세 속의 일시적 반등'일 뿐입니다.")
-    st.caption("- 이런 '떨어지는 칼날'은 가짜 신호로 간주하여 순위표 최하위권으로 강제 강등시켰습니다.")
+    st.caption("1️⃣ **S-L (추세 가속도):** 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
+    st.caption("2️⃣ **미너비니 필터:** 단기 추세가 마이너스면 '떨어지는 칼날'로 간주하여 강등시켰습니다.")
     st.caption("3️⃣ **20일(%):** 최근 1개월간의 실제 수익률 성적표입니다.")
 
 with tab2:
@@ -140,7 +147,7 @@ with tab3:
     st.dataframe(df_core.style.background_gradient(cmap='RdYlGn', subset=['S-SCORE', '20일(%)'])
                  .format({'S-SCORE': '{:.2f}', '20일(%)': '{:.2f}%'}), use_container_width=True)
 
-# [7] 차트 (로컬 날짜/MultiIndex 완벽 대응)
+# [7] 차트
 st.markdown("---")
 st.subheader("📉 개별 섹터 히스토리 차트")
 selected = st.selectbox("섹터 선택", list(all_data['sector_etfs'].keys()))
@@ -150,7 +157,6 @@ if selected:
         hist.columns = hist.columns.get_level_values(0)
     
     date_list = hist.index.tolist()
-    # 💡 로컬 렌더링을 위한 데이터 추출 헬퍼
     def get_val(series): return series.values.flatten() if isinstance(series, pd.DataFrame) else series.values
 
     fig = go.Figure()

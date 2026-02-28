@@ -19,10 +19,10 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛡️ V8 하이브리드: 강철 안정화 리포트")
-st.caption("수익률 계산 로직을 완전히 새로 짜서 숫자가 튀는 현상을 원천 차단한 최종 안정화 버전입니다.")
+st.title("🛡️ V8 하이브리드: 무결점 강철 리포트")
+st.caption("변수 정의 오류를 해결하고 소장님의 지시대로 지표를 완벽하게 배치한 최종본입니다.")
 
-# ── 데이터 로딩 (Pure Close) ──
+# ── 데이터 로딩 ──
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_v8_stable_data(ticker, start_year):
     fetch_start = f"{start_year - 1}-01-01"
@@ -58,10 +58,9 @@ def calculate_signals(df, ticker):
     df['신호'], df['CMS'] = res[0], res[1]
     return df
 
-# ── 성과 계산 (오류 완벽 차단 로직) ──
+# ── 성과 계산 ──
 def calc_performance(df, ticker, start_year):
     df = df[df.index >= f"{start_year}-01-01"].copy()
-    # 일일 수익률 계산 (배당 제외 Pure Close)
     df['daily_ret'] = df['Close'].pct_change().fillna(0)
     is_lev = ticker in ["TQQQ", "QLD"]
     
@@ -70,35 +69,24 @@ def calc_performance(df, ticker, start_year):
         if sig == '⚠️터보경보(Turbo)': return 0.2 if is_lev else 0.4
         return 0.0
     
-    # 💡 신호 발생 다음 날부터 반영 (Look-ahead bias 방지)
     df['target_exp'] = df['신호'].apply(get_exp).shift(1).fillna(0)
     
-    # 💡 자산 가치 계산 (초기값 1.0)
     current_asset = 1.0
     max_asset = 1.0
     asset_history = []
-    actual_exposures = []
     
     for i in range(len(df)):
         exp = df['target_exp'].iloc[i]
         d_ret = df['daily_ret'].iloc[i]
-        
-        # 거래 수수료 0.2% (비중 변경 시에만 발생)
         cost = 0.002 if i > 0 and exp != df['target_exp'].iloc[i-1] else 0
         
-        # 1. 일단 현재 비중으로 가상 자산 가치 계산
         temp_asset = current_asset * (1 + (d_ret * exp) - cost)
-        
-        # 2. 트레일링 스탑 (고점 대비 -8% 하락 시 비중 축소)
         dd = (temp_asset / max_asset) - 1
         final_exp = exp * 0.3 if dd < -0.08 else exp
         
-        # 3. 진짜 자산 가치 확정
         current_asset = current_asset * (1 + (d_ret * final_exp) - (cost if final_exp > 0 else 0))
         if current_asset > max_asset: max_asset = current_asset
-        
         asset_history.append(current_asset)
-        actual_exposures.append(final_exp)
 
     df['cum_strat'] = asset_history
     df['cum_bah'] = (1 + df['daily_ret']).cumprod()
@@ -106,36 +94,45 @@ def calc_performance(df, ticker, start_year):
     df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
     return df
 
-# ── 메인 화면 ──
+# ── 실행 ──
 ticker = st.selectbox("종목 선택", ["TQQQ", "QQQ", "SOXX", "QLD", "SPY"])
-start_year = st.selectbox("시작 연도", [2000, 2010, 2020])
+start_year = st.selectbox("시작 연도", [2010, 2015, 2020])
 
 raw_data = load_v8_stable_data(ticker, start_year)
 sig_df = calculate_signals(raw_data, ticker)
 perf_df = calc_performance(sig_df, ticker, start_year)
 
-# ── 📊 상단 메트릭 배치 (소장님 지시 순서 고정) ──
-f_s, f_b = (perf_df['cum_strat'].iloc[-1]-1)*100, (perf_df['cum_bah'].iloc[-1]-1)*100
-mdd_s, mdd_b = perf_df['dd_strat'].min(), perf_df['dd_bah'].min()
+# ── 📊 지표 변수 정의 (에러 방지용 선언) ──
+f_strat = (perf_df['cum_strat'].iloc[-1] - 1) * 100
+f_bah = (perf_df['cum_bah'].iloc[-1] - 1) * 100
+mdd_strat = perf_df['dd_strat'].min()
+mdd_bah = perf_df['dd_bah'].min()
 years = (perf_df.index[-1] - perf_df.index[0]).days / 365.25
-cagr_s = ((perf_df['cum_strat'].iloc[-1])**(1/years) - 1) * 100
+cagr_strat = ((perf_df['cum_strat'].iloc[-1])**(1/years) - 1) * 100
+cagr_bah = ((perf_df['cum_bah'].iloc[-1])**(1/years) - 1) * 100
 
+# ── 상단 메트릭 배치 (소장님 지시 순서) ──
 m1, m2, m3, m4, m5 = st.columns(5)
-m1.metric("전략 수익률", f"{f_s:,.0f}%", delta=f"{f_s-f_b:,.0f}%p")
-m2.metric("전략 MDD", f"{mdd_s:.1f}%", delta=f"{abs(mdd_b)-abs(mdd_s):.1f}%p 우수")
-m3.metric("전략 CAGR", f"{cagr_s:.1f}%")
+m1.metric("전략 수익률", f"{f_strat:,.0f}%", delta=f"{f_strat - f_bah:,.0f}%p")
+m2.metric("전략 MDD", f"{mdd_strat:.1f}%", delta=f"{abs(mdd_bah)-abs(mdd_strat):.1f}%p 우수")
+m3.metric("전략 CAGR", f"{cagr_strat:.1f}%", delta=f"{cagr_strat - cagr_bah:.1f}%p")
 m4.metric("존버 수익률", f"{f_bah:,.0f}%")
-m5.metric("존버 MDD", f"{mdd_b:.1f}%")
+m5.metric("존버 MDD", f"{mdd_bah:.1f}%")
 
-# 📈 로그 차트
-st.plotly_chart(go.Figure([go.Scatter(x=perf_df.index, y=perf_df['cum_strat'], name='V8 전략'), 
-                           go.Scatter(x=perf_df.index, y=perf_df['cum_bah'], name='B&H 존버', line=dict(dash='dot'))]).update_layout(yaxis_type="log", height=500), use_container_width=True)
+# 📈 차트
+fig = make_subplots(rows=2, cols=1, row_heights=[0.7, 0.3], shared_xaxes=True, vertical_spacing=0.05)
+fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['cum_strat'], name='V8 전략'), row=1, col=1)
+fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['cum_bah'], name='B&H 존버', line=dict(dash='dot')), row=1, col=1)
+fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['dd_strat'], name='전략 MDD', fill='tozeroy'), row=2, col=1)
+fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['dd_bah'], name='존버 MDD', line=dict(dash='dot')), row=2, col=1)
+fig.update_layout(height=600, yaxis_type="log")
+st.plotly_chart(fig, use_container_width=True)
 
-# 🎯 역사적 위기 방어 분석
+# 🎯 위기 방어 분석
 st.markdown("---")
 st.markdown("#### 🎯 역사적 위기 방어 분석 (신호 이후 60일 비교)")
-EVENTS = [{"date": "2000-03-24", "name": "닷컴버블 붕괴"}, {"date": "2008-09-15", "name": "리먼 파산"}, {"date": "2020-02-24", "name": "코로나 쇼크"}, {"date": "2022-01-05", "name": "금리인상기"}]
-ev_cols = st.columns(2)
+EVENTS = [{"date": "2011-08-08", "name": "미 신용강등"}, {"date": "2020-02-24", "name": "코로나 쇼크"}, {"date": "2022-01-05", "name": "금리인상기"}]
+ev_cols = st.columns(3)
 for i, ev in enumerate(EVENTS):
     ev_date = pd.Timestamp(ev['date'])
     if ev_date < perf_df.index[0]: continue
@@ -143,5 +140,5 @@ for i, ev in enumerate(EVENTS):
     if len(after_data) < 2: continue
     s_p = (after_data['cum_strat'].iloc[-1] / after_data['cum_strat'].iloc[0] - 1) * 100
     b_p = (after_data['cum_bah'].iloc[-1] / after_data['cum_bah'].iloc[0] - 1) * 100
-    with ev_cols[i % 2]:
+    with ev_cols[i % 3]:
         st.markdown(f"""<div class="event-card"><b>📅 {ev['date']} | {ev['name']}</b><br>당시 신호: <b>{after_data['신호'].iloc[0]}</b><br><div class="metric-text">신호 후 60일 존버: <span class="loss-text">{b_p:.1f}%</span></div><div class="metric-text">신호 후 60일 전략: <span class="win-text">{s_p:.1f}%</span></div><div class="metric-text"><b>🛡️ 방어 성공: {s_p - b_p:.1f}%p 보호</b></div></div>""", unsafe_allow_html=True)

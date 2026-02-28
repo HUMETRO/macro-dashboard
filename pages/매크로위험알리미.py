@@ -67,7 +67,7 @@ if not df_sectors.empty and 'L-score' in df_sectors.columns:
         else: st.warning("⚠️ 관망 (방향 탐색)")
     
     # 💡 원본 문구 복구 1
-    st.caption("💡 시장 상태 판별 기준: 전체 평균 장기/단기 스코어가 모두 0보다 크면 '매수', 모두 0보다 작으면 '도망챠', 그 외는 '관망'입니다. 객관적인 숫자를 믿으십시오.")
+    st.caption("💡 시장 상태 판별 기준: 전체 평균 장기/단기 스코어가 모두 0보다 크면 '매수', 모두 0보다 작으면 '도망ㅊ', 그 외는 '관망'입니다. 객관적인 숫자를 믿으십시오.")
 else:
     st.error("🚨 데이터 계산 오류 발생!")
 
@@ -132,4 +132,29 @@ with tab2:
     st.dataframe(df_individual.style.background_gradient(cmap='RdYlGn', subset=['연초대비', 'high대비', '200대비', '전일대비', '52저대비'], vmin=-10, vmax=10)
                  .format({'현재가': '{:.2f}', '연초대비': '{:.1f}%', 'high대비': '{:.1f}%', '200대비': '{:.1f}%', '전일대비': '{:.1f}%', '52저대비': '{:.1f}%'}),
                  use_container_width=True, height=450)
-    st.caption("💡 배경색 의미: 🟩 코어 우
+    st.caption("💡 배경색 의미: 🟩 코어 우량주(안전) / 🟨 위성 자산(주의) / 🟥 레버리지 및 고변동성(위험)")
+
+with tab3:
+    st.subheader("🎯 11개 핵심 섹터 현황")
+    st.dataframe(df_core.style.background_gradient(cmap='RdYlGn', subset=['S-SCORE', '20일(%)'])
+                 .format({'S-SCORE': '{:.2f}', '20일(%)': '{:.2f}%'}),
+                 use_container_width=True, height=450)
+
+# [7] 차트 (로컬/웹 완벽 대응)
+st.markdown("---")
+selected = st.selectbox("📉 상세 분석 차트 선택", list(all_data['sector_etfs'].keys()))
+if selected:
+    hist = all_data['sector_etfs'][selected]['history'].copy()
+    if isinstance(hist.columns, pd.MultiIndex): hist.columns = hist.columns.get_level_values(0)
+    date_list = hist.index.tolist()
+    def gv(s): return s.values.flatten() if isinstance(s, pd.DataFrame) else s.values
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=date_list, y=gv(hist['Close']), name='종가', line=dict(color='blue', width=2)))
+    if 'MA20' in hist.columns: fig.add_trace(go.Scatter(x=date_list, y=gv(hist['MA20']), name='MA20', line=dict(dash='dash', color='orange')))
+    if 'MA200' in hist.columns: fig.add_trace(go.Scatter(x=date_list, y=gv(hist['MA200']), name='MA200', line=dict(dash='dot', color='green', width=2)))
+    
+    view_days = min(len(hist), 500)
+    fig.update_layout(title=f"{selected} ({all_data['sector_etfs'][selected]['ticker']}) 분석 차트", 
+                      template="plotly_white", height=450, xaxis_range=[date_list[-view_days], date_list[-1]], hovermode="x unified")
+    st.plotly_chart(fig, use_container_width=True)

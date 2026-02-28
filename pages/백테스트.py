@@ -18,8 +18,8 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛡️ V8 하이브리드: 소장님 전용 정밀 리포트")
-st.caption("소장님의 지시대로 전략 지표 우선 배치 및 7대 역사적 위기 검증 시스템을 통합했습니다.")
+st.title("🛡️ V8 하이브리드: 위험회피 정밀 리포트")
+st.caption("위험알리미를 이용했을때 수익률을 확인합니다.")
 
 # 💡 역사적 위기 리스트 정의
 EVENTS = [
@@ -109,7 +109,8 @@ def calc_performance(df, ticker, start_year):
     return df
 
 # ── 메인 실행 ──
-ticker = st.selectbox("종목 선택", ["TQQQ", "QQQ", "SOXX", "QLD", "SPY"])
+# 💡 소장님 요청: 1배수가 먼저 오도록 순서 변경
+ticker = st.selectbox("종목 선택", ["QQQ", "SOXX", "SPY", "TQQQ", "QLD"])
 start_year = st.selectbox("시작 연도", [2000, 2010, 2020])
 
 raw_data = load_v8_custom_data(ticker, start_year)

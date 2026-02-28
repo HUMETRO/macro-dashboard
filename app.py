@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # 🔒 관리자 비밀번호 (원하는 숫자로 수정하세요!)
-ADMIN_PASSWORD = "1234"
+ADMIN_PASSWORD = "3918"
 
 # [2] 스타일 시트 (모바일 최적화 및 디자인)
 st.markdown("""
@@ -82,7 +82,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# [4] 제자님 오리지널 안내 가이드 (원본 문구 100% 보존)
+# [4] 제자님 오리지널 안내 가이드
 st.markdown("""
 <div class="mobile-tip">
     📱 <b>안내:</b> 왼쪽 상단 <b>[ > ]</b> 버튼으로 메뉴를 찾기 어려우시다면, <br>
@@ -97,7 +97,7 @@ if st.button("📊 실시간 매크로 위험 분석기 실행 →", use_contain
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# [6] 주요 분석 기능 (4대 핵심 기능 원본 문구 보존)
+# [6] 주요 분석 기능 (4대 핵심 기능)
 with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
     st.markdown("""
 <div class="feature-card">📊 <b>매크로 위험알리미</b><br>
@@ -112,8 +112,9 @@ with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
 
 st.markdown("---")
 
-# [7] 💬 방문자 의견 게시판
-st.markdown("### 💬 방문자 의견 게시판")
+# [7] 💬 방문자 의견 게시판 (문구 업데이트 완료!)
+st.markdown("### 💬 연구소 게시판")
+st.caption("📈 시장에 대한 생각이나 본 연구소 페이지 개선을 위한 자유로운 의견을 남겨주세요!")
 
 COMMENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
 
@@ -132,16 +133,20 @@ def save_comments(comments):
         return True
     except: return False
 
-# ✅ 댓글 작성 폼 (구문 오류 수정 완료)
+# 댓글 작성 폼
 with st.form("comment_form", clear_on_submit=True):
     c_col1, c_col2 = st.columns([1, 2])
     with c_col1:
         nick = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
     with c_col2:
         mood = st.selectbox("시장 분위기", ["😐 중립", "🐂 강세", "🐻 약세", "🤔 관망", "🚀 폭발"])
-    text = st.text_area("의견", placeholder="시장에 대한 생각을 남겨주세요 📝", max_chars=300, height=90)
     
-    if st.form_submit_button("💬 댓글 등록", use_container_width=True):
+    # ⭐ 제자님 요청: 페이지 관련 자유로운 의견 안내 추가
+    text = st.text_area("의견 작성", 
+                        placeholder="시황 분석이나 연구소 페이지 기능 개선 등 자유로운 의견을 남겨주세요 📝", 
+                        max_chars=300, height=100)
+    
+    if st.form_submit_button("💬 의견 등록하기", use_container_width=True):
         if text.strip():
             cms = load_comments()
             cms.insert(0, {
@@ -151,14 +156,13 @@ with st.form("comment_form", clear_on_submit=True):
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
             if save_comments(cms[:100]):
-                st.success("✅ 등록되었습니다!")
+                st.success("✅ 소중한 의견이 등록되었습니다!")
                 st.rerun()
 
-# [8] 댓글 목록 및 소장님 전용 삭제 관리
+# [8] 댓글 목록 및 관리 (삭제 기능 유지)
 cms = load_comments()
 for idx, c in enumerate(cms):
     col_text, col_del = st.columns([9, 1])
-    
     with col_text:
         st.markdown(f"""
         <div class="comment-card">
@@ -166,24 +170,22 @@ for idx, c in enumerate(cms):
             {c['text']}
         </div>
         """, unsafe_allow_html=True)
-    
     with col_del:
         if st.button("🗑️", key=f"btn_del_{idx}"):
             st.session_state[f"confirm_delete_{idx}"] = True
 
     if st.session_state.get(f"confirm_delete_{idx}"):
         with st.container():
-            st.warning(f"'{c['nickname']}'님의 글을 삭제하시겠습니까?")
             pwd = st.text_input("관리자 비번", type="password", key=f"pwd_{idx}")
             c1, c2 = st.columns(2)
             if c1.button("확인", key=f"ok_{idx}"):
                 if pwd == ADMIN_PASSWORD:
                     new_cms = [v for i, v in enumerate(cms) if i != idx]
                     if save_comments(new_cms):
-                        st.success("삭제 성공!")
+                        st.success("삭제 완료")
                         del st.session_state[f"confirm_delete_{idx}"]
                         st.rerun()
-                else: st.error("비번 틀림!")
+                else: st.error("비번 불일치")
             if c2.button("취소", key=f"cancel_{idx}"):
                 del st.session_state[f"confirm_delete_{idx}"]
                 st.rerun()

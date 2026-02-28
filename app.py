@@ -10,7 +10,10 @@ st.set_page_config(
     layout="centered"
 )
 
-# [2] 스타일 시트 (모바일 가독성 및 디자인 최적화)
+# 🔒 관리자 비밀번호 (원하는 숫자로 수정하세요!)
+ADMIN_PASSWORD = "3918"
+
+# [2] 스타일 시트 (모바일 최적화 및 디자인)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
@@ -51,10 +54,11 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     background: #f1f3f6;
     border-radius: 10px;
     padding: 12px 16px;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
     font-size: 0.87rem;
     color: #333;
 }
+.comment-meta { font-size: 0.74rem; color: #888; margin-bottom: 4px; }
 
 div.stButton > button {
     width: 100%;
@@ -65,6 +69,15 @@ div.stButton > button {
     background-color: #2d6a9f;
     color: white;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+/* 삭제 버튼 스타일 */
+.del-btn button {
+    padding: 0 !important;
+    height: 30px !important;
+    font-size: 0.8rem !important;
+    background-color: transparent !important;
+    color: #ff4b4b !important;
+    border: none !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -78,7 +91,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# [4] 제자님 오리지널 안내 가이드
+# [4] 제자님 오리지널 안내 가이드 (원본 문구 100% 보존)
 st.markdown("""
 <div class="mobile-tip">
     📱 <b>안내:</b> 왼쪽 상단 <b>[ > ]</b> 버튼으로 메뉴를 찾기 어려우시다면, <br>
@@ -93,7 +106,7 @@ if st.button("📊 실시간 매크로 위험 분석기 실행 →", use_contain
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# [6] 주요 분석 기능 (사라졌던 4번째 기능 완벽 복구!)
+# [6] 주요 분석 기능 (4대 핵심 기능 원본 문구 보존)
 with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
     st.markdown("""
 <div class="feature-card">📊 <b>매크로 위험알리미</b><br>
@@ -108,8 +121,9 @@ with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
 
 st.markdown("---")
 
-# [7] 방문자 의견 게시판
+# [7] 💬 방문자 의견 게시판 (관리자 삭제 로직 합체)
 st.markdown("### 💬 방문자 의견 게시판")
+
 COMMENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
 
 def load_comments():
@@ -127,20 +141,8 @@ def save_comments(comments):
         return True
     except: return False
 
+# 댓글 등록 폼
 with st.form("comment_form", clear_on_submit=True):
     c_col1, c_col2 = st.columns([1, 2])
-    with c_col1: nick = st.text_input("닉네임", max_chars=15)
-    with c_col2: mood = st.selectbox("시장 분위기", ["😐 중립", "🐂 강세", "🐻 약세", "🤔 관망", "🚀 폭발"])
-    text = st.text_area("의견", max_chars=300, height=90)
-    if st.form_submit_button("💬 댓글 등록", use_container_width=True):
-        if text.strip():
-            cms = load_comments()
-            cms.insert(0, {"nickname": nick.strip() or "익명", "mood": mood, "text": text.strip(), "time": datetime.now().strftime("%Y-%m-%d %H:%M")})
-            if save_comments(cms[:100]): st.success("✅ 등록되었습니다!"); st.rerun()
-
-cms = load_comments()
-for c in cms:
-    st.markdown(f"""<div class="comment-card"><div style="font-size:0.75rem; color:#888;">🙋 <b>{c['nickname']}</b> · {c['mood']} · {c['time']}</div>{c['text']}</div>""", unsafe_allow_html=True)
-
-st.markdown("---")
-st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")
+    with c_col1: nick = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
+    with c_col2: mood = st.selectbox("시장 분위기", ["😐 중립",

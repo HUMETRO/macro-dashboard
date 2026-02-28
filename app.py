@@ -10,7 +10,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# [2] 스타일 시트
+# [2] 스타일 시트 (모바일 가독성 및 디자인 최적화)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
@@ -27,7 +27,6 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 .hero-box h2 { font-size: 1.3rem; margin-bottom: 8px; }
 .hero-box p  { font-size: 0.88rem; opacity: 0.85; line-height: 1.6; }
 
-/* ⭐ 제자님의 오리지널 노란색 안내 배너 */
 .mobile-tip {
     background: #fff3cd;
     border-left: 4px solid #ffc107;
@@ -79,7 +78,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# [4] ⭐ 제자님 요청: "못 찾겠으면 아래 버튼 눌러라" 가이드 문구 복구
+# [4] 제자님 오리지널 안내 가이드
 st.markdown("""
 <div class="mobile-tip">
     📱 <b>안내:</b> 왼쪽 상단 <b>[ > ]</b> 버튼으로 메뉴를 찾기 어려우시다면, <br>
@@ -94,17 +93,22 @@ if st.button("📊 실시간 매크로 위험 분석기 실행 →", use_contain
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# [6] 주요 기능 안내
-with st.expander("🔍 연구소 주요 분석 기능", expanded=False):
+# [6] 주요 분석 기능 (사라졌던 4번째 기능 완벽 복구!)
+with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
     st.markdown("""
-<div class="feature-card">📊 <b>매크로 위험알리미</b><br>섹터별 장단기 추세 분석 및 실시간 위험 신호 포착</div>
-<div class="feature-card">🎯 <b>S-L 스코어 시스템</b><br>자금 흐름의 방향과 속도를 데이터로 수치화</div>
-<div class="feature-card">🛡️ <b>미너비니 절대 추세 필터</b><br>하락 추세 섹터 자동 강등 시스템</div>
+<div class="feature-card">📊 <b>매크로 위험알리미</b><br>
+미국 섹터 ETF와 11개 핵심 섹터의 장단기 추세 분석 → 시장 위험 신호 포착</div>
+<div class="feature-card">🎯 <b>S-L 스코어 시스템</b><br>
+단기(S) vs 장기(L) 점수 차이로 자금 흐름의 방향과 속도를 수치화</div>
+<div class="feature-card">🛡️ <b>미너비니 절대 추세 필터</b><br>
+단기 추세 마이너스 섹터는 '떨어지는 칼날'로 자동 강등 처리</div>
+<div class="feature-card">🚨 <b>안전자산 쏠림 경보</b><br>
+상위 섹터에 방어 자산 집중 시 스마트머니 이탈 신호 실시간 감지</div>
 """, unsafe_allow_html=True)
 
 st.markdown("---")
 
-# [7] 💬 방문자 의견 게시판
+# [7] 방문자 의견 게시판
 st.markdown("### 💬 방문자 의견 게시판")
 COMMENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
 
@@ -134,7 +138,6 @@ with st.form("comment_form", clear_on_submit=True):
             cms.insert(0, {"nickname": nick.strip() or "익명", "mood": mood, "text": text.strip(), "time": datetime.now().strftime("%Y-%m-%d %H:%M")})
             if save_comments(cms[:100]): st.success("✅ 등록되었습니다!"); st.rerun()
 
-# 댓글 목록 표시
 cms = load_comments()
 for c in cms:
     st.markdown(f"""<div class="comment-card"><div style="font-size:0.75rem; color:#888;">🙋 <b>{c['nickname']}</b> · {c['mood']} · {c['time']}</div>{c['text']}</div>""", unsafe_allow_html=True)

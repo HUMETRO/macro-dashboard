@@ -19,7 +19,7 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 """, unsafe_allow_html=True)
 
 st.title("🛡️ V8 하이브리드: 소장님 전용 정밀 리포트")
-st.caption("소장님의 지시대로 전략 지표 우선 배치 및 7대 역사적 위기 검증 시스템을 통합했습니다.")
+st.caption("가장 안정적인 V8 원본 로직을 기반으로 한 실전 대응용 통합 시스템입니다.")
 
 # 💡 역사적 위기 리스트 정의
 EVENTS = [
@@ -27,12 +27,12 @@ EVENTS = [
     {"date": "2008-09-15", "name": "리먼 브라더스 파산", "type": "danger", "desc": "금융위기 정점 대응력"},
     {"date": "2009-03-09", "name": "금융위기 대바닥", "type": "safe", "desc": "공포 속의 역발상 매수(Purple)"},
     {"date": "2011-08-08", "name": "미국 신용등급 강등", "type": "danger", "desc": "단기 폭락장 세이프가드 작동"},
-    {"date": "2018-12-24", "name": "미중 무역전쟁 바닥", "type": "safe", "desc": "하락 추세 끝자락 매수 신호"},
+    {"date": "2018-12-24", "name": "미중 무역전쟁 바닥", "type": "safe", "desc": "하락 끝자락 매수 신호"},
     {"date": "2020-02-24", "name": "코로나 팬데믹 쇼크", "type": "danger", "desc": "VIX Spike 조기경보의 핵심"},
     {"date": "2022-01-05", "name": "인플레이션 하락장", "type": "danger", "desc": "1년 내내 이어진 금리인상기 회피"}
 ]
 
-# ── 데이터 로딩 (Pure Close) ──
+# ── 데이터 로딩 ──
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_v8_custom_data(ticker, start_year):
     fetch_start = f"{start_year - 1}-01-01"
@@ -58,7 +58,7 @@ def load_v8_custom_data(ticker, start_year):
     combined['Spread'] = combined['Spread'].fillna(1.0)
     return combined.dropna(subset=['Close', 'VIX', 'MA200']).tz_localize(None)
 
-# ── 로직 및 성과 계산 ──
+# ── 신호 및 성과 계산 ──
 def calculate_signals(df, ticker):
     df = df.copy()
     is_lev = ticker in ["TQQQ", "QLD"]
@@ -108,7 +108,7 @@ def calc_performance(df, ticker, start_year):
     df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
     return df
 
-# ── 메인 실행 ──
+# ── 실행 ──
 ticker = st.selectbox("종목 선택", ["TQQQ", "QQQ", "SOXX", "QLD", "SPY"])
 start_year = st.selectbox("시작 연도", [2000, 2010, 2020])
 
@@ -116,11 +116,10 @@ raw_data = load_v8_custom_data(ticker, start_year)
 sig_df = calculate_signals(raw_data, ticker)
 perf_df = calc_performance(sig_df, ticker, start_year)
 
-# ── 📊 상단 지표 순서 재배치 ──
+# 📊 지표 출력
 f_strat, f_bah = (perf_df['cum_strat'].iloc[-1]-1)*100, (perf_df['cum_bah'].iloc[-1]-1)*100
 mdd_s, mdd_b = perf_df['dd_strat'].min(), perf_df['dd_bah'].min()
-days = (perf_df.index[-1] - perf_df.index[0]).days
-years = days / 365.25
+years = (perf_df.index[-1] - perf_df.index[0]).days / 365.25
 cagr_s = ((perf_df['cum_strat'].iloc[-1])**(1/years) - 1) * 100
 cagr_b = ((perf_df['cum_bah'].iloc[-1])**(1/years) - 1) * 100
 
@@ -131,7 +130,7 @@ m3.metric("전략 CAGR", f"{cagr_s:.1f}%", delta=f"{cagr_s - cagr_b:.1f}%p")
 m4.metric("존버 수익률", f"{f_bah:,.0f}%")
 m5.metric("존버 MDD", f"{mdd_b:.1f}%")
 
-# 📈 [시각화] 차트 영역
+# 📈 차트 영역
 fig = make_subplots(rows=2, cols=1, row_heights=[0.7, 0.3], shared_xaxes=True, vertical_spacing=0.05)
 fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['cum_strat'], name='V8 전략'), row=1, col=1)
 fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['cum_bah'], name='B&H 존버', line=dict(dash='dot')), row=1, col=1)
@@ -140,27 +139,15 @@ fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['dd_bah'], name='존버 MDD'
 fig.update_layout(height=600, yaxis_type="log")
 st.plotly_chart(fig, use_container_width=True)
 
-# 🎯 [복구완료] 7대 역사적 위기 회피 검증
+# 🎯 위기 회피 검증
 st.markdown("---")
 st.markdown("#### 🎯 7대 역사적 위기 회피 검증")
 ev_cols = st.columns(2)
 for i, ev in enumerate(EVENTS):
     ev_date = pd.Timestamp(ev['date'])
     if ev_date < perf_df.index[0]: continue
-    
-    # 해당 날짜 혹은 가장 가까운 미래 날짜의 데이터 추출
-    future_data = perf_df.loc[perf_df.index >= ev_date]
-    if future_data.empty: continue
-    row = future_data.iloc[0]
-    
+    row = perf_df.loc[perf_df.index >= ev_date].iloc[0]
     sig_color = "red" if "철수" in row['신호'] else ("orange" if "경보" in row['신호'] or "관망" in row['신호'] else "green")
     if "역발상" in row['신호']: sig_color = "purple"
-    
     with ev_cols[i % 2]:
-        st.markdown(f"""
-<div class="event-card {'ev-safe' if ev['type']=='safe' else 'ev-danger'}">
-    <b>📅 {ev['date']} | {ev['name']}</b><br>
-    신호: <span style="color:{sig_color}; font-weight:800;">{row['신호']}</span><br>
-    <small>CMS 점수: {row['CMS']:.1f}점 | {ev['desc']}</small>
-</div>
-""", unsafe_allow_html=True)
+        st.markdown(f'<div class="event-card {"ev-safe" if ev["type"]=="safe" else "ev-danger"}"><b>📅 {ev["date"]} | {ev["name"]}</b><br>신호: <span style="color:{sig_color}; font-weight:800;">{row["신호"]}</span><br><small>CMS 점수: {row["CMS"]:.1f}점 | {ev["desc"]}</small></div>', unsafe_allow_html=True)

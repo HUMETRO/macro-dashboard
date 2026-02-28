@@ -21,27 +21,46 @@ except ImportError as e:
 
 st.set_page_config(page_title="매크로 위험알리미", page_icon="📊", layout="wide")
 
-# 🎨 가독성 극대화 CSS (카드 내 줄바꿈 및 간격 강제 제어)
+# 🎨 [블랙 테마 & 모바일 4열 고정 CSS]
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
-html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; color: #111827 !important; }
+html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; background-color: #0e1117; color: #ffffff; }
 
-/* 카드별 독립 공간 확보 */
-.mini-card {
-    border: 1px solid #e1e4e8;
-    border-radius: 8px;
-    padding: 8px;
-    margin-bottom: 10px;
-    background-color: #ffffff;
+/* 카드 컨테이너: 가로 배치 강제 */
+.card-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
 }
-.buy-border { border-top: 5px solid #10b981; }
-.wait-border { border-top: 5px solid #f59e0b; }
-.sell-border { border-top: 5px solid #ef4444; }
 
-.ticker-text { font-size: 0.85rem; font-weight: bold; color: #1f2937; }
-.val-text { font-size: 0.75rem; color: #4b5563; }
-.perc-text { font-size: 0.8rem; font-weight: bold; }
+/* 개별 카드: 모바일 3~4열, PC 6열 이상 */
+.quant-card {
+    flex: 0 0 calc(25% - 8px); /* 모바일 기본 4열 */
+    background-color: #1e2128;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid #30363d;
+    text-align: center;
+    min-height: 100px;
+}
+
+@media (max-width: 600px) {
+    .quant-card {
+        flex: 0 0 calc(33.33% - 8px); /* 작은 화면 3열 */
+        padding: 6px;
+    }
+}
+
+/* 신호별 색상 테두리 */
+.buy-border { border-top: 4px solid #10b981 !important; }
+.wait-border { border-top: 4px solid #f59e0b !important; }
+.sell-border { border-top: 4px solid #ef4444 !important; }
+
+.ticker-name { font-size: 0.8rem; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
+.ticker-sub { font-size: 0.65rem; color: #8b949e; }
+.value-box { font-size: 0.75rem; font-weight: 600; margin-top: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -81,62 +100,47 @@ with tab1:
     sub_t, sub_c = st.tabs(["📑 테이블 뷰", "🎴 카드 뷰"])
     
     with sub_t:
-        st.dataframe(df_sectors.style.background_gradient(cmap='RdYlGn', subset=['L-score', 'S-score', 'S-L', '20일(%)'])
-                     .format({'L-score': '{:.2f}', 'S-score': '{:.2f}', 'S-L': '{:.2f}', '20일(%)': '{:.2f}%'}),
-                     use_container_width=True, height=450)
+        st.dataframe(df_sectors, use_container_width=True, height=450)
 
-    with sub_c:
-        # ⭐ [초록불 우선 정렬] 
-        df_sorted = df_sectors.copy()
-        def get_priority(row):
-            if row['S-score'] > 0 and row['L-score'] > 0: return 0
-            if row['S-score'] < 0 and row['L-score'] < 0: return 2
-            return 1
-        df_sorted['p'] = df_sorted.apply(get_priority, axis=1)
-        df_sorted = df_sorted.sort_values(['p', 'S-L'], ascending=[True, False]).reset_index(drop=True)
+    with tab1:
+        with sub_c:
+            # ⭐ [정렬 로직 강화] 초록불이 무조건 최상단
+            df_sorted = df_sectors.copy()
+            df_sorted['p'] = df_sorted.apply(lambda r: 0 if r['S-score']>0 and r['L-score']>0 else (2 if r['S-score']<0 and r['L-score']<0 else 1), axis=1)
+            df_sorted = df_sorted.sort_values(['p', 'S-L'], ascending=[True, False]).reset_index(drop=True)
 
-        # 💡 [가독성 혁명] 한 줄에 3개씩, 각 정보를 분리해서 표시
-        row_count = 3
-        cols = st.columns(row_count)
-        
-        for idx, row in df_sorted.iterrows():
-            with cols[idx % row_count]:
-                sig_class = "buy-border" if row['p'] == 0 else ("sell-border" if row['p'] == 2 else "wait-border")
-                sig_icon = "🟢" if row['p'] == 0 else ("🔴" if row['p'] == 2 else "🟡")
+            # 💡 [강력 배치] HTML Flexbox로 모바일 강제 정렬
+            card_html = '<div class="card-wrapper">'
+            for _, row in df_sorted.iterrows():
+                cls = "buy-border" if row['p'] == 0 else ("sell-border" if row['p'] == 2 else "wait-border")
+                ico = "✅" if row['p'] == 0 else ("🚨" if row['p'] == 2 else "⚠️")
+                color = "#10b981" if row['20일(%)'] > 0 else "#ef4444"
                 
-                # HTML을 사용하되 숫자가 섞이지 않도록 명확한 구조로 작성
-                st.markdown(f"""
-                <div class="mini-card {sig_class}">
-                    <div class="ticker-text">{sig_icon} {row['섹터']}</div>
-                    <div class="val-text">티커: <b>{row['티커']}</b></div>
-                    <div class="val-text">S-L: {row['S-L']:.3f}</div>
-                    <div class="perc-text" style="color:{'#10b981' if row['20일(%)'] > 0 else '#ef4444'}">
-                        {row['20일(%)']}%
-                    </div>
+                card_html += f"""
+                <div class="quant-card {cls}">
+                    <div class="ticker-name">{ico} {row['섹터']}</div>
+                    <div class="ticker-sub">{row['티커']}</div>
+                    <div class="value-box">S-L: {row['S-L']:.2f}</div>
+                    <div class="value-box" style="color:{color}">{row['20일(%)']}%</div>
                 </div>
-                """, unsafe_allow_html=True)
+                """
+            card_html += '</div>'
+            st.markdown(card_html, unsafe_allow_html=True)
 
-    # ⭐ 원본 설명 문구 복구 100%
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("##### 💡 퀀트 지표 핵심 요약")
-    st.caption("**📊 L-score (장기 체력)**: 200일선 이격도, 52주 고점 위치 등을 종합한 장기 추세 점수입니다.")
-    st.caption("**🚀 S-score (단기 기세)**: 20일선 이격도, 1개월 수익률 등을 종합한 단기 모멘텀 점수입니다.")
-    st.caption("---")
-    st.caption("1️⃣ **S-L (추세 가속도):** 단기 모멘텀(S)에서 장기 모멘텀(L)을 뺀 값입니다. 값이 클수록 최근 돈이 맹렬하게 몰리고 있음을 뜻합니다.")
-    st.caption("2️⃣ **미너비니 절대 추세 필터 (랭킹 보정)**: 하락 추세 섹터는 가짜 신호로 간주하여 강등시켰습니다.")
+    st.caption("1️⃣ **S-L (추세 가속도):** 값이 클수록 최근 돈이 맹렬하게 몰림")
+    st.caption("2️⃣ **미너비니 필터:** 하락 추세 섹터는 강제 강등")
 
-# [6] 기타 탭
+# [6] 기타 탭 및 차트 (기존 로직 유지)
 with tab2: st.dataframe(df_individual, use_container_width=True)
 with tab3: st.dataframe(df_core, use_container_width=True)
 
-# [7] 차트 (로컬 방어 로직)
 st.markdown("---")
 selected = st.selectbox("📊 상세 차트", list(all_data['sector_etfs'].keys()))
 if selected:
     hist = all_data['sector_etfs'][selected]['history'].copy()
     if isinstance(hist.columns, pd.MultiIndex): hist.columns = hist.columns.get_level_values(0)
-    date_list = hist.index.tolist()
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=date_list, y=hist['Close'].values.flatten(), name='종가', line=dict(color='blue', width=2)))
-    fig.update_layout(title=f"{selected} 차트", template="plotly_white", height=450)
+    fig = go.Figure(data=[go.Scatter(x=hist.index, y=hist['Close'].values.flatten(), name='Price')])
+    fig.update_layout(template="plotly_dark", height=450) # 차트도 다크 테마 적용
     st.plotly_chart(fig, use_container_width=True)

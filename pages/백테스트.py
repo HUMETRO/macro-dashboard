@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="V9 Ultimate 리포트", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="V9 Survivor 최종", page_icon="🛡️", layout="wide")
 
 # ── 스타일 설정 ──
 st.markdown("""
@@ -18,8 +18,8 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛡️ V9 하이브리드: 닷컴버블 생존 검증 (Ultimate)")
-st.caption("2010년 이전은 QQQ 기반 가상 데이터로, 이후는 실제 데이터로 검증하는 통합 시스템입니다.")
+st.title("🛡️ V9 하이브리드: 닷컴버블 생존 엔진 (Survivor)")
+st.caption("레버리지 폭락 시 자산 증발을 방지하는 로직을 탑재하여 닷컴버블의 혹독한 시련을 재검증합니다.")
 
 # 💡 역사적 위기 리스트
 EVENTS = [
@@ -33,32 +33,24 @@ EVENTS = [
 ]
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def load_v9_ultimate_data(ticker, start_year):
+def load_v9_survivor_data(ticker, start_year):
     fetch_start = f"{start_year - 1}-01-01"
-    # 실제 데이터 로드
     raw = yf.download(ticker, start=fetch_start, progress=False)
     if isinstance(raw.columns, pd.MultiIndex): raw.columns = raw.columns.get_level_values(0)
     
-    # 💡 가상 데이터 생성을 위한 QQQ 로드
     qqq = yf.download("QQQ", start=fetch_start, progress=False)
     if isinstance(qqq.columns, pd.MultiIndex): qqq.columns = qqq.columns.get_level_values(0)
     
-    # 레버리지 배수 설정
     lev = 3.0 if ticker == "TQQQ" else (2.0 if ticker == "QLD" else 1.0)
-    
-    # 데이터 병합 및 가상 데이터 생성
     combined = qqq[['Close']].rename(columns={'Close': 'QQQ_Close'})
     combined['Actual_Close'] = raw['Close']
     
-    # 실제 데이터가 없는 구간(상장 전)은 QQQ 수익률의 n배로 가상 수익률 생성
-    combined['QQQ_Ret'] = combined['QQQ_Close'].pct_change()
-    combined['Synth_Ret'] = combined['QQQ_Ret'] * lev
-    
-    # 실제 상장 이후는 실제 수익률 사용
+    combined['QQQ_Ret'] = combined['QQQ_Close'].pct_change().fillna(0)
     combined['Actual_Ret'] = combined['Actual_Close'].pct_change()
-    combined['Final_Ret'] = combined['Actual_Ret'].fillna(combined['Synth_Ret']).fillna(0)
     
-    # 지표용 QQQ 데이터 (신호 판단의 기준)
+    # 실제 데이터가 있으면 실제를, 없으면 가상(QQQ*배수) 수익률 사용
+    combined['Final_Ret'] = combined['Actual_Ret'].fillna(combined['QQQ_Ret'] * lev).fillna(0)
+    
     vix = yf.download("^VIX", start=fetch_start, progress=False)
     if isinstance(vix.columns, pd.MultiIndex): vix.columns = vix.columns.get_level_values(0)
     combined = combined.join(vix['Close'].to_frame('VIX'), how='inner')
@@ -98,12 +90,14 @@ def calc_performance(df, start_year, lev):
         return 0.0
     
     df['base_exp'] = df['신호'].apply(get_exp).shift(1).fillna(0)
-    # 거래 비용 0.2% 반영
-    cost = 0.002
-    df['strat_ret'] = (df['Final_Ret'] * df['base_exp']) - (cost if any(df['base_exp'].diff() != 0) else 0)
     
-    df['cum_strat'] = (1 + df['strat_ret']).cumprod()
-    df['cum_bah'] = (1 + df['Final_Ret']).cumprod()
+    # 💡 누적 수익률 계산 시 파산 방지 로직 (수익률이 -100%가 되지 않도록 클리핑)
+    # 실제 존버(B&H) 수익률
+    df['bah_daily'] = df['Final_Ret'].clip(lower=-0.999) 
+    df['strat_daily'] = (df['Final_Ret'] * df['base_exp'] - 0.002).clip(lower=-0.999)
+    
+    df['cum_strat'] = (1 + df['strat_daily']).cumprod()
+    df['cum_bah'] = (1 + df['bah_daily']).cumprod()
     df['dd_strat'] = (df['cum_strat'] / df['cum_strat'].cummax() - 1) * 100
     df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
     return df
@@ -112,11 +106,11 @@ def calc_performance(df, start_year, lev):
 ticker = st.selectbox("종목 선택", ["TQQQ", "QLD", "QQQ"])
 start_year = st.selectbox("시작 연도", [2000, 2010, 2020])
 
-raw_df, lev = load_v9_ultimate_data(ticker, start_year)
+raw_df, lev = load_v9_survivor_data(ticker, start_year)
 sig_df = calculate_v9_signals(raw_df, lev)
 perf_df = calc_performance(sig_df, start_year, lev)
 
-# 📊 지표 출력 (소장님 지시 순서 고정)
+# 📊 지표 출력
 f_s, f_b = (perf_df['cum_strat'].iloc[-1]-1)*100, (perf_df['cum_bah'].iloc[-1]-1)*100
 mdd_s, mdd_b = perf_df['dd_strat'].min(), perf_df['dd_bah'].min()
 years = (perf_df.index[-1] - perf_df.index[0]).days / 365.25

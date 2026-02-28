@@ -122,7 +122,7 @@ m4.metric("존버 수익률", f"{f_bah:,.0f}%")
 m5.metric("존버 MDD", f"{mdd_b:.1f}%")
 
 # 📈 [시각화] 로그 차트 및 MDD 영역
-[Image of a professional trading dashboard showing performance metrics like CAGR and MDD with a realistic growth curve]
+
 fig = make_subplots(rows=2, cols=1, row_heights=[0.7, 0.3], shared_xaxes=True, vertical_spacing=0.05)
 fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['cum_strat'], name='V8 전략'), row=1, col=1)
 fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['cum_bah'], name='B&H 존버', line=dict(dash='dot')), row=1, col=1)

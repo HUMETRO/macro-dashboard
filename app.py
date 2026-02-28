@@ -70,15 +70,6 @@ div.stButton > button {
     color: white;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
-/* 삭제 버튼 스타일 */
-.del-btn button {
-    padding: 0 !important;
-    height: 30px !important;
-    font-size: 0.8rem !important;
-    background-color: transparent !important;
-    color: #ff4b4b !important;
-    border: none !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,7 +112,7 @@ with st.expander("🔍 연구소 주요 분석 기능 보기", expanded=False):
 
 st.markdown("---")
 
-# [7] 💬 방문자 의견 게시판 (관리자 삭제 로직 합체)
+# [7] 💬 방문자 의견 게시판
 st.markdown("### 💬 방문자 의견 게시판")
 
 COMMENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
@@ -141,8 +132,61 @@ def save_comments(comments):
         return True
     except: return False
 
-# 댓글 등록 폼
+# ✅ 댓글 작성 폼 (구문 오류 수정 완료)
 with st.form("comment_form", clear_on_submit=True):
     c_col1, c_col2 = st.columns([1, 2])
-    with c_col1: nick = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
-    with c_col2: mood = st.selectbox("시장 분위기", ["😐 중립",
+    with c_col1:
+        nick = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
+    with c_col2:
+        mood = st.selectbox("시장 분위기", ["😐 중립", "🐂 강세", "🐻 약세", "🤔 관망", "🚀 폭발"])
+    text = st.text_area("의견", placeholder="시장에 대한 생각을 남겨주세요 📝", max_chars=300, height=90)
+    
+    if st.form_submit_button("💬 댓글 등록", use_container_width=True):
+        if text.strip():
+            cms = load_comments()
+            cms.insert(0, {
+                "nickname": nick.strip() or "익명 투자자", 
+                "mood": mood, 
+                "text": text.strip(), 
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M")
+            })
+            if save_comments(cms[:100]):
+                st.success("✅ 등록되었습니다!")
+                st.rerun()
+
+# [8] 댓글 목록 및 소장님 전용 삭제 관리
+cms = load_comments()
+for idx, c in enumerate(cms):
+    col_text, col_del = st.columns([9, 1])
+    
+    with col_text:
+        st.markdown(f"""
+        <div class="comment-card">
+            <div class="comment-meta">🙋 <b>{c['nickname']}</b> · {c.get('mood', '')} · {c['time']}</div>
+            {c['text']}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_del:
+        if st.button("🗑️", key=f"btn_del_{idx}"):
+            st.session_state[f"confirm_delete_{idx}"] = True
+
+    if st.session_state.get(f"confirm_delete_{idx}"):
+        with st.container():
+            st.warning(f"'{c['nickname']}'님의 글을 삭제하시겠습니까?")
+            pwd = st.text_input("관리자 비번", type="password", key=f"pwd_{idx}")
+            c1, c2 = st.columns(2)
+            if c1.button("확인", key=f"ok_{idx}"):
+                if pwd == ADMIN_PASSWORD:
+                    new_cms = [v for i, v in enumerate(cms) if i != idx]
+                    if save_comments(new_cms):
+                        st.success("삭제 성공!")
+                        del st.session_state[f"confirm_delete_{idx}"]
+                        st.rerun()
+                else: st.error("비번 틀림!")
+            if c2.button("취소", key=f"cancel_{idx}"):
+                del st.session_state[f"confirm_delete_{idx}"]
+                st.rerun()
+
+st.markdown("---")
+st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")

@@ -157,4 +157,14 @@ for i, ev in enumerate(EVENTS):
     if len(available) == 0: continue
     row = perf_df.loc[available[0]]
     sig = row['신호']
-    sig_color = "red" if "탈출" in sig else ("orange" if "Turbo" in sig or
+    sig_color = "red" if "탈출" in sig else ("orange" if "Turbo" in sig or "관망" in sig else "green")
+    if "역발상" in sig: sig_color = "purple"
+    
+    with ev_cols[i % 2]:
+        st.markdown(f"""
+<div class="event-card {'ev-safe' if ev['type']=='safe' else 'ev-danger'}">
+    <b>📅 {ev['date']} | {ev['name']}</b><br>
+    <span style="color:{sig_color}; font-weight:800; font-size:1.1rem;">당시 신호: {sig}</span><br>
+    <small>CMS 점수: {row['CMS']:.1f}점 | {ev['desc']}</small>
+</div>
+""", unsafe_allow_html=True)

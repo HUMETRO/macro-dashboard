@@ -18,8 +18,8 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛡️ V8 하이브리드: 소장님 전용 정밀 리포트")
-st.caption("소장님의 지시대로 전략 지표 우선 배치 및 7대 역사적 위기 검증 시스템을 통합했습니다.")
+st.title("🛡️ V8 하이브리드: 정밀 리포트")
+st.caption("방어시스템을 7대 역사적 위기 검증 시스템을 통해 수익률을 분석했습니다.")
 
 # 💡 역사적 위기 리스트 정의
 EVENTS = [

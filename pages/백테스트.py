@@ -176,64 +176,96 @@ fig.update_layout(height=600, yaxis_type="log")
 st.plotly_chart(fig, use_container_width=True)
 
 # =====================================================================
-# 🎯 [업그레이드 완료] 역사적 위기 회피 검증 (데이터 풀충전 완료)
+# 🎯 [100% 팩트 기반] 역사적 위기 구간 '실시간 자동 계산' 엔진 탑재
 # =====================================================================
 st.markdown("---")
-st.markdown("#### 🎯 역사적 위기 회피 스토리텔링")
-st.caption(f"💡 아래 위기를 클릭하시면 알고리즘이 과거 폭락장을 어떻게 피했는지 **[{ticker}]** 맞춤형 데이터를 볼 수 있습니다.")
+st.markdown("#### 🎯 역사적 위기 회피 스토리텔링 (실시간 계산 팩트)")
+st.caption(f"💡 아래 위기를 클릭하시면 알고리즘이 해당 기간 동안 <b>[{ticker}]</b> 폭락을 어떻게 피했는지 실시간 계산된 데이터를 보여줍니다.")
 
-# 📂 [데이터베이스] 종목별 / 위기별 백테스트 결과 사전
-CRISIS_DB = {
+# 💡 위기별 [시작일, 종료일, 요약설명] 정의 (가짜 데이터 영구 삭제!)
+CRISIS_PERIODS = {
     "닷컴버블 붕괴": {
-        "summary": "회사 이름에 '.com'만 붙어 있으면 실적이 없어도 주가가 수십 배 폭등하다 붕괴한 광기의 시대입니다.",
-        "QQQ":  {"market_ret": "-82.9%", "sys_ret": "-5.5%",  "action": "2000년 8월 전량 매도 ➡️ 2.5년 현금 관망 후 2003년 4월 재매수"},
-        "SPY":  {"market_ret": "-49.1%", "sys_ret": "+4.2%",  "action": "2000년 9월 매도 신호 ➡️ 방어 자산으로 스위칭"},
-        "TQQQ": {"market_ret": "-99.9%", "sys_ret": "-15.0%", "action": "레버리지 위험 감지 즉시 터보경보 발동 및 현금 100% 대피"},
-        "QLD":  {"market_ret": "-96.0%", "sys_ret": "-12.0%", "action": "단기 이평선 붕괴 즉시 전량 매도"}
+        "start": "2000-03-01", "end": "2002-10-31",
+        "desc": "회사 이름에 '.com'만 붙어 있으면 폭등하다 붕괴한 광기의 시대입니다."
     },
     "리먼 브라더스 파산": {
-        "summary": "서브프라임 모기지 사태로 인해 미국 부동산 거품이 꺼지며 전 세계 금융 시스템이 마비된 사건입니다.",
-        "QQQ":  {"market_ret": "-53.5%", "sys_ret": "+1.5%",  "action": "2007년 11월 조기 매도 ➡️ 달러 자산 대피"},
-        "SPY":  {"market_ret": "-56.8%", "sys_ret": "-2.1%",  "action": "2008년 1월 철수 신호 ➡️ 철저한 관망 유지"},
-        "TQQQ": {"market_ret": "-99.0%", "sys_ret": "-8.0%",  "action": "2007년 말 VIX 급등 감지 ➡️ 레버리지 전면 차단"},
-        "QLD":  {"market_ret": "-80.0%", "sys_ret": "-5.0%",  "action": "조기경보 발동 후 하락장 내내 관망 유지"}
+        "start": "2007-10-01", "end": "2009-03-31",
+        "desc": "서브프라임 모기지 사태로 인해 전 세계 금융 시스템이 마비된 사건입니다."
     },
     "미국 신용등급 강등": {
-        "summary": "2011년 여름, S&P가 미국 국가 신용등급을 강등시키며 순식간에 글로벌 증시가 패닉에 빠진 사건입니다.",
-        "QQQ":  {"market_ret": "-18.5%", "sys_ret": "-2.1%",  "action": "VIX 스파이크 선제 감지 ➡️ 단기 매도 후 10월 재진입"},
-        "SPY":  {"market_ret": "-19.4%", "sys_ret": "-1.5%",  "action": "이평선 데드크로스 전 조기경보 발동"},
-        "TQQQ": {"market_ret": "-48.0%", "sys_ret": "-5.5%",  "action": "터보경보로 익절 후 하락 파동 회피"},
-        "QLD":  {"market_ret": "-35.0%", "sys_ret": "-3.8%",  "action": "급락 구간 노출 최소화"}
+        "start": "2011-05-01", "end": "2011-10-31",
+        "desc": "S&P가 미국 국가 신용등급을 강등시키며 글로벌 증시가 패닉에 빠진 사건입니다."
     },
     "미중 무역전쟁": {
-        "summary": "2018년 말, 파월의 금리인상 고집과 미중 무역분쟁이 겹쳐 크리스마스 이브까지 피를 흘렸던 공포의 바닥입니다.",
-        "QQQ":  {"market_ret": "-23.4%", "sys_ret": "-4.5%",  "action": "10월 조기 매도 ➡️ 12월 말 '역발상 매수' 신호로 바닥 잡기"},
-        "SPY":  {"market_ret": "-19.8%", "sys_ret": "-3.2%",  "action": "하락장 관망 후 VIX 안정화 시점 선침매"},
-        "TQQQ": {"market_ret": "-58.0%", "sys_ret": "-11.0%", "action": "고점 대비 반토막 전 터보경보로 시드 보호"},
-        "QLD":  {"market_ret": "-42.0%", "sys_ret": "-7.5%",  "action": "하락 트렌드 회피 후 2019년 V자 반등 완벽 탑승"}
+        "start": "2018-09-01", "end": "2018-12-31",
+        "desc": "파월의 금리인상 고집과 미중 무역분쟁이 겹쳐 크리스마스 이브까지 피를 흘렸던 바닥입니다."
     },
     "코로나 팬데믹 쇼크": {
-        "summary": "코로나19 바이러스 창궐로 인해 한 달 만에 글로벌 증시가 30% 이상 수직 낙하한 전례 없는 셧다운 장세입니다.",
-        "QQQ":  {"market_ret": "-30.0%", "sys_ret": "-3.0%",  "action": "2020년 2월 하순 VIX Spike 포착 ➡️ 폭락 하루 전 탈출 성공"},
-        "SPY":  {"market_ret": "-34.0%", "sys_ret": "-4.5%",  "action": "단기 모멘텀 붕괴 확인 즉시 시스템 매도"},
-        "TQQQ": {"market_ret": "-70.0%", "sys_ret": "-10.0%", "action": "변동성 터보경보 발동 ➡️ 가장 치명적인 폭락 구간 회피"},
-        "QLD":  {"market_ret": "-55.0%", "sys_ret": "-6.0%",  "action": "VIX 35 돌파 시 전량 매도 완료"}
+        "start": "2020-02-01", "end": "2020-04-30",
+        "desc": "코로나19 창궐로 인해 한 달 만에 글로벌 증시가 수직 낙하한 셧다운 장세입니다."
     },
     "인플레이션 하락장": {
-        "summary": "미 연준(Fed)의 공격적인 금리 인상으로 인해 2022년 1년 내내 계단식으로 시장이 무너진 장기 침체장입니다.",
-        "QQQ":  {"market_ret": "-35.5%", "sys_ret": "-8.2%",  "action": "2022년 1월 🔴철수 신호 점등 ➡️ 1년간 철저한 현금 관망"},
-        "SPY":  {"market_ret": "-25.4%", "sys_ret": "-5.5%",  "action": "MA200 붕괴 확인 후 방어 자산 비중 극대화"},
-        "TQQQ": {"market_ret": "-81.0%", "sys_ret": "-18.0%", "action": "1월 초 터보경보 발생으로 TQQQ 보유 전면 금지"},
-        "QLD":  {"market_ret": "-61.0%", "sys_ret": "-12.5%", "action": "데드캣 바운스에 속지 않고 10월까지 관망 유지"}
+        "start": "2022-01-01", "end": "2022-10-31",
+        "desc": "미 연준(Fed)의 공격적인 금리 인상으로 인해 1년 내내 시장이 무너진 장기 침체장입니다."
     },
     "트럼프 글로벌 관세 쇼크": {
-        "summary": "2025년 4월, 트럼프 행정부의 전방위적 관세 부과 발표로 증시가 단기 발작을 일으킨 후 V자로 반등한 장세입니다.",
-        "QQQ":  {"market_ret": "-15.2%", "sys_ret": "-2.1%",  "action": "VIX 단기 급등(Spike) 감지 ➡️ 터보경보로 단기 하락 회피 후 재매수"},
-        "SPY":  {"market_ret": "-12.5%", "sys_ret": "-1.5%",  "action": "MA50 이탈 시 조기경보 발동, V자 반등 초입에 🔥역발상 매수"},
-        "TQQQ": {"market_ret": "-39.8%", "sys_ret": "-6.5%",  "action": "레버리지 변동성 위험 회피 ➡️ 단기 폭락 방어 성공"},
-        "QLD":  {"market_ret": "-28.4%", "sys_ret": "-4.2%",  "action": "하락 파동 스킵 후 MA20 회복 시 즉각 🟢매수 전환"}
+        "start": "2025-04-01", "end": "2025-05-31",
+        "desc": "트럼프 행정부의 관세 부과 발표로 증시가 발작을 일으킨 후 V자로 반등한 장세입니다."
     }
 }
+
+# 🔄 CRISIS_PERIODS를 돌면서 실시간 수익률 계산 및 UI 생성
+for name, info in CRISIS_PERIODS.items():
+    s_date = pd.Timestamp(info['start'])
+    e_date = pd.Timestamp(info['end'])
+    
+    # 1. 상단에서 선택한 연도(start_year) 이전의 위기면 화면에 안 띄움
+    if e_date < perf_df.index[0] or s_date > perf_df.index[-1]:
+        continue
+        
+    # 2. 해당 위기 구간의 데이터만 뚝 떼어내기 (Slice)
+    period_df = perf_df.loc[(perf_df.index >= s_date) & (perf_df.index <= e_date)]
+    
+    # 데이터가 부족하면 패스
+    if len(period_df) < 2:
+        continue
+        
+    # 3. 💯 100% 팩트 기반 실시간 수익률 계산 로직!
+    # 존버 수익률 = (구간 마지막날 종가 / 구간 첫날 종가) - 1
+    bah_return = (period_df['Close'].iloc[-1] / period_df['Close'].iloc[0] - 1) * 100
+    
+    # 시스템 수익률 = (구간 마지막날 누적수익 / 구간 첫날 누적수익) - 1
+    sys_return = (period_df['cum_strat'].iloc[-1] / period_df['cum_strat'].iloc[0] - 1) * 100
+    
+    # 4. 방어 결과에 따른 색상 및 텍스트 처리
+    sys_color = "bt-buy" if sys_return > bah_return else "bt-highlight"
+    win_text = "✨ 시장 방어 성공!" if sys_return > bah_return else "💧 시장 대비 열위"
+    
+    # 위기 시작 시점의 시스템 신호 가져오기
+    first_signal = period_df['신호'].iloc[0]
+    first_cms = period_df['CMS'].iloc[0]
+
+    with st.expander(f"💣 {name} ({info['start'][:7]} ~ {info['end'][:7]})"):
+        st.markdown(f"""
+        <div class="bt-card">
+            <div class="bt-title">📖 위기 요약</div>
+            <div class="bt-text">{info['desc']}</div>
+        </div>
+        <div class="bt-card">
+            <div class="bt-title">🤖 V8 시스템의 대응 신호 (구간 진입 시점)</div>
+            <div class="bt-text">
+                • 🚨 <b>최초 감지 신호:</b> <span style="font-weight:800; color:#b91c1c;">{first_signal}</span> <small>(CMS: {first_cms:.1f}점)</small><br>
+                • 🛡️ <b>실시간 팩트 체크:</b> 위기 구간 동안 시스템이 시장의 실제 데이터를 기반으로 산출해 낸 누적 수익률입니다.
+            </div>
+        </div>
+        <div class="bt-card">
+            <div class="bt-title">📊 실제 구간 수익률 ({ticker} 기준) - {win_text}</div>
+            <div class="bt-text">
+                • 📉 <b>단순 존버 시:</b> <span class="bt-highlight">{bah_return:+.1f}%</span><br>
+                • 📈 <b>V8 시스템 대응 시: <span class="{sys_color}">{sys_return:+.1f}%</span></b>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # 🔄 EVENTS 리스트를 돌면서 아코디언(Expander) UI 생성
 for ev in EVENTS:

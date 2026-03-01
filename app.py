@@ -22,24 +22,24 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 .mobile-tip {
     background: #fff3cd; border-left: 4px solid #ffc107;
     padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem;
-    color: #334155 !important; /* 글자색 강화 */
+    color: #334155 !important;
 }
 .feature-card {
     background: #f8f9fa; border-left: 4px solid #2d6a9f;
     padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; line-height: 1.6;
-    color: #1e293b !important; /* 글자색 강화 */
+    color: #1e293b !important;
 }
 .comment-card {
     background: #f1f3f6; border-radius: 10px;
     padding: 12px 16px; margin-bottom: 10px; font-size: 0.87rem; line-height: 1.5;
-    color: #1e293b !important; /* 글자색 강화 */
+    color: #1e293b !important;
 }
 .comment-meta { font-size: 0.74rem; color: #64748b; margin-bottom: 4px; }
 
 .update-card {
     background: #f8faff; border: 1px solid #dbeafe; border-left: 4px solid #3b82f6;
     border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; font-size: 0.86rem; line-height: 1.6;
-    color: #1e293b !important; /* 글자색 강화 */
+    color: #1e293b !important;
 }
 .update-version { font-size: 0.72rem; font-weight: 700; color: #3b82f6; letter-spacing: 0.05em; margin-bottom: 3px; }
 .update-date    { font-size: 0.7rem; color: #9ca3af; margin-bottom: 6px; }
@@ -123,6 +123,10 @@ if st.button("🔬 신호 백테스트 (역사 검증) →", use_container_width
 
 st.markdown("<br>", unsafe_allow_html=True)
 
+# ── 관리자 로그인 시스템 (댓글 삭제 권한 부여용) ──
+if "admin_ok" not in st.session_state:
+    st.session_state.admin_ok = False
+
 # ── [3] 기능 안내 ────────────────────────────────
 with st.expander("🔍 주요 분석 기능 보기", expanded=False):
     st.markdown("""
@@ -134,15 +138,17 @@ with st.expander("🔍 주요 분석 기능 보기", expanded=False):
 
 st.markdown("---")
 
-# ── [4] 방문자 댓글 (완벽 복구) ──────────────────
+# ── [4] 방문자 댓글 ──────────────────
 st.markdown("### 💬 방문자 의견 게시판")
 st.caption("시장 의견, 기능 제안, 자유로운 생각을 남겨주세요!")
 
+# 💡 댓글 입력 폼과 렌더링 로직 분리
 with st.form("comment_form", clear_on_submit=True):
     col_a, col_b = st.columns([1, 2])
     with col_a: nickname = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
     with col_b: mood = st.selectbox("시장 분위기", ["😐 중립", "🐂 강세", "🐻 약세", "🤔 관망", "🚀 폭발"])
     comment_text = st.text_area("의견", placeholder="시장 분석, 기능 제안, 자유로운 의견 환영합니다 📝  (최대 300자)", max_chars=300, height=90)
+    
     if st.form_submit_button("💬 댓글 등록", use_container_width=True):
         if not comment_text.strip():
             st.warning("내용을 입력해주세요!")
@@ -156,30 +162,37 @@ with st.form("comment_form", clear_on_submit=True):
                 st.success("✅ 등록되었습니다!")
                 st.rerun()
 
+# 💡 댓글 렌더링 및 관리자 삭제 기능 완벽 복구
 comments = load_json(COMMENT_FILE, [])
 if comments:
     st.markdown(f"**총 {len(comments)}개 의견**")
-    for c in comments:
-        st.markdown(f"""
-<div class="comment-card">
-    <div class="comment-meta">🙋 <b>{c['nickname']}</b> · {c.get('mood','')} · {c['time']}</div>
-    {c['text']}
-</div>""", unsafe_allow_html=True)
+    for i, c in enumerate(comments):
+        col1, col2 = st.columns([9, 1]) # 열을 나누어 우측에 삭제 버튼 배치
+        with col1:
+            st.markdown(f"""
+            <div class="comment-card">
+                <div class="comment-meta">🙋 <b>{c['nickname']}</b> · {c.get('mood','')} · {c['time']}</div>
+                {c['text']}
+            </div>""", unsafe_allow_html=True)
+        with col2:
+            # 관리자(admin_ok)일 때만 삭제 버튼 렌더링
+            if st.session_state.admin_ok:
+                if st.button("🗑️", key=f"del_comment_{i}", help="댓글 삭제"):
+                    comments.pop(i)
+                    save_json(COMMENT_FILE, comments)
+                    st.rerun()
 
 st.markdown("---")
 
-# ── [5] 업데이트 로그 (완벽 복구) ────────────────
+# ── [5] 업데이트 로그 및 관리자 기능 ────────────────
 st.markdown("### 📋 업데이트 로그")
 st.caption("JEFF님이 직접 기록하는 개선 이력입니다.")
-
-if "admin_ok" not in st.session_state:
-    st.session_state.admin_ok = False
 
 with st.expander("🔐 관리자 로그인", expanded=False):
     if not st.session_state.admin_ok:
         pw = st.text_input("비밀번호", type="password", key="login_pw")
         if st.button("로그인", key="login_btn"):
-            if pw == "airbusan3060!":
+            if pw == "airbusan3060!": # 소장님 전용 비밀번호
                 st.session_state.admin_ok = True
                 st.rerun()
             else: st.error("비밀번호가 틀렸습니다.")
@@ -221,11 +234,10 @@ for i, u in enumerate(updates):
 </div>""", unsafe_allow_html=True)
 
     if st.session_state.admin_ok:
-        if st.button("🗑️ 삭제", key=f"del_{i}"):
+        if st.button("🗑️ 삭제", key=f"del_update_{i}"):
             updates.pop(i)
             save_json(UPDATE_FILE, updates)
             st.rerun()
 
 st.markdown("---")
 st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")
-

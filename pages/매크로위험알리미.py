@@ -183,7 +183,7 @@ with tab2:
         )
         st.caption("💡 🟩 코어 우량주 / 🟨 위성 자산 / 🟥 레버리지·고변동성")
 
-    with sub_c2: # 🎴 고대비 카드 뷰 이식
+    with sub_c2: # 🎴 고대비 카드 뷰 이식 + 자산군 컬러 복구!
         df_stk = df_individual.copy().sort_values('연초대비', ascending=False).reset_index(drop=True)
         cols2 = st.columns(2)
         for i, row in df_stk.iterrows():
@@ -191,6 +191,15 @@ with tab2:
             ma200 = row.get('200대비', 0)
             prev  = row.get('전일대비', 0)
             high  = row.get('high대비', 0)
+            ticker_str = row['티커']
+
+            # 💡 [핵심 복구] 종목별 자산군 색상 자동 분류 로직
+            if ticker_str in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ']:
+                asset_icon = "🟥" # 레버리지/고변동성
+            elif ticker_str in ['SPY', 'QQQ', 'DIA', 'IWM', 'VOO', 'IVV', 'VT']:
+                asset_icon = "🟩" # 코어 우량주
+            else:
+                asset_icon = "🟨" # 위성 자산 (일반 개별주 포함)
 
             if pd.isna(ytd): ytd = 0
             
@@ -206,7 +215,7 @@ with tab2:
             with cols2[i % 2]:
                 st.markdown(f"""
                 <div class="unified-card {css}">
-                    <span class="ticker-label">{ic} {row['티커']} <span style='font-size:0.9rem;font-weight:400'>| ${row['현재가']:,.2f}</span></span>
+                    <span class="ticker-label">{ic} {asset_icon} {ticker_str} <span style='font-size:0.9rem;font-weight:400'>| ${row['현재가']:,.2f}</span></span>
                     <span class="signal-text">{sig_txt} <span style='font-weight:400'>(YTD: {ytd_str})</span></span>
                     <div class="score-line">
                         전일: <b>{prev_str}</b> | 200일: <b>{ma200_str}</b><br>
@@ -277,3 +286,4 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
+

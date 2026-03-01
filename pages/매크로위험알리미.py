@@ -168,55 +168,70 @@ with tab1:
     st.caption("1️⃣ **S-L**: 클수록 최근 자금 유입 가속 중  2️⃣ **미너비니 필터**: S<0이면 최하위 강등  3️⃣ **20일(%)**: 최근 1개월 실제 수익률")
 
 # ══════════════════════════════════════
-# TAB2: 개별 종목
+# TAB2: 개별 종목 (표와 카드 모두 아이콘 100% 복구 완료)
 # ══════════════════════════════════════
 with tab2:
     st.subheader("💹 개별 종목 추적")
     sub_t2, sub_c2 = st.tabs(["📑 테이블 뷰", "🎴 카드 뷰"])
 
+    # 💡 [핵심 해결 로직] 표와 카드에 공통으로 아이콘을 박아넣습니다.
+    df_display = df_individual.copy()
+    
+    def add_asset_icon(tick):
+        if tick in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ']: return f"🟥 {tick}"
+        elif tick in ['SPY', 'QQQ', 'DIA', 'IWM', 'VOO', 'IVV', 'VT']: return f"🟩 {tick}"
+        else: return f"🟨 {tick}"
+        
+    df_display['티커_아이콘'] = df_display['티커'].apply(add_asset_icon)
+    
+    # 💡 [음영 에러 방어] 빈칸(NaN)이 있으면 색칠 로직이 깨지므로 0으로 꽉꽉 채웁니다.
+    num_cols = ['연초대비','high대비','200대비','전일대비','52저대비']
+    for col in num_cols:
+        df_display[col] = pd.to_numeric(df_display[col], errors='coerce').fillna(0)
+
     with sub_t2:
+        # 테이블 컬럼 예쁘게 재배치
+        cols_order = ['티커_아이콘', '현재가', '연초대비', 'high대비', '200대비', '전일대비', '52저대비']
+        df_table = df_display[cols_order].rename(columns={'티커_아이콘': '티커'})
+        
         st.dataframe(
-            df_individual.style
-                .background_gradient(cmap='RdYlGn', subset=['연초대비','high대비','200대비','전일대비','52저대비'], vmin=-10, vmax=10)
-                .format({'현재가':'{:.2f}','연초대비':'{:.1f}%','high대비':'{:.1f}%','200대비':'{:.1f}%','전일대비':'{:.1f}%','52저대비':'{:.1f}%'}),
+            df_table.style
+                .background_gradient(cmap='RdYlGn', subset=num_cols, vmin=-10, vmax=10)
+                .format({
+                    '현재가':'{:.2f}',
+                    '연초대비':'{:.1f}%',
+                    'high대비':'{:.1f}%',
+                    '200대비':'{:.1f}%',
+                    '전일대비':'{:.1f}%',
+                    '52저대비':'{:.1f}%'
+                }),
             use_container_width=True, height=450
         )
         st.caption("💡 🟩 코어 우량주 / 🟨 위성 자산 / 🟥 레버리지·고변동성")
 
     with sub_c2: 
-        df_stk = df_individual.copy().sort_values('연초대비', ascending=False).reset_index(drop=True)
+        df_stk = df_display.sort_values('연초대비', ascending=False).reset_index(drop=True)
         cols2 = st.columns(2)
         for i, row in df_stk.iterrows():
             ytd = row.get('연초대비', 0)
             ma200 = row.get('200대비', 0)
             prev  = row.get('전일대비', 0)
             high  = row.get('high대비', 0)
-            ticker_str = row['티커']
+            ticker_with_icon = row['티커_아이콘'] # 🟥 TQQQ 형태로 이미 완성됨
 
-            # 💡 [핵심] 종목별 자산군 색상 자동 분류 로직
-            if ticker_str in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ']:
-                asset_icon = "🟥" # 레버리지/고변동성
-            elif ticker_str in ['SPY', 'QQQ', 'DIA', 'IWM', 'VOO', 'IVV', 'VT']:
-                asset_icon = "🟩" # 코어 우량주
-            else:
-                asset_icon = "🟨" # 위성 자산
-
-            if pd.isna(ytd): ytd = 0
-            
             css = "card-buy" if ytd > 0 else ("card-exit" if ytd < 0 else "card-wait")
             sig_txt = "✅ 매수 신호" if ytd > 0 else ("🚨 도망챠" if ytd < 0 else "⚠️ 관망")
             ic = "🟢" if ytd > 0 else ("🔴" if ytd < 0 else "🟡")
             
-            ytd_str   = f"{ytd:+.1f}%" if not pd.isna(ytd) else "N/A"
-            ma200_str = f"{ma200:+.1f}%" if not pd.isna(ma200) else "N/A"
-            prev_str  = f"{prev:+.1f}%" if not pd.isna(prev) else "N/A"
-            high_str  = f"{high:+.1f}%" if not pd.isna(high) else "N/A"
+            ytd_str   = f"{ytd:+.1f}%"
+            ma200_str = f"{ma200:+.1f}%"
+            prev_str  = f"{prev:+.1f}%"
+            high_str  = f"{high:+.1f}%"
 
             with cols2[i % 2]:
-                # 💡 [핵심] 출력 부분에 asset_icon 변수 삽입 완료!
                 st.markdown(f"""
                 <div class="unified-card {css}">
-                    <span class="ticker-label">{ic} {asset_icon} {ticker_str} <span style='font-size:0.9rem;font-weight:400'>| ${row['현재가']:,.2f}</span></span>
+                    <span class="ticker-label">{ic} {ticker_with_icon} <span style='font-size:0.9rem;font-weight:400'>| ${row['현재가']:,.2f}</span></span>
                     <span class="signal-text">{sig_txt} <span style='font-weight:400'>(YTD: {ytd_str})</span></span>
                     <div class="score-line">
                         전일: <b>{prev_str}</b> | 200일: <b>{ma200_str}</b><br>

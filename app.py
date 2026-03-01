@@ -256,12 +256,6 @@ if st.session_state.admin_ok:
                         st.success("✅ 추가 및 자동 정렬되었습니다!")
                         st.rerun()
         
-        # 💡 [핵심] 잃어버린 실록을 원터치로 복구하는 마법의 버튼
-        st.markdown("---")
-        if st.button("🔄 기록 초기화 (v0.1~v0.4 기본 세팅으로 복구)", use_container_width=True):
-            save_json(UPDATE_FILE, DEFAULT_UPDATES)
-            st.success("✅ v0.1~v0.4 기록이 완벽하게 복구되었습니다!")
-            st.rerun()
 
 updates = load_json(UPDATE_FILE, DEFAULT_UPDATES)
 
@@ -323,3 +317,4 @@ for i, u in enumerate(updates):
 
 st.markdown("---")
 st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")
+

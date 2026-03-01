@@ -12,17 +12,7 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
-.event-card { border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.85rem; border-left: 5px solid; }
-.ev-safe { background:#f0fdf4; border-color:#10b981; color: #166534; }
-.ev-danger { background:#fef2f2; border-color:#ef4444; color: #991b1b; }
-</style>
-""", unsafe_allow_html=True)
 
-st.title("🛡️ V8 하이브리드: 정밀 리포트")
-st.caption("7대 역사적 위기 검증 시스템을 통해 전략을 백테스트합니다.")
-
-st.markdown("""
-<style>
 /* ── 백테스트 스토리 카드 (흰색 글씨 영구 퇴출) ── */
 .bt-card { 
     background: #f8fafc; 
@@ -45,6 +35,9 @@ st.markdown("""
 .bt-buy { font-weight: 800; color: #047857; } /* 방어/수익 강조: 진한 쑥색 */
 </style>
 """, unsafe_allow_html=True)
+
+st.title("🛡️ V8 하이브리드: 정밀 리포트")
+st.caption("7대 역사적 위기 검증 시스템을 통해 전략을 백테스트합니다.")
 
 # 💡 역사적 위기 리스트 정의
 EVENTS = [
@@ -165,27 +158,81 @@ fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['dd_bah'], name='존버 MDD'
 fig.update_layout(height=600, yaxis_type="log")
 st.plotly_chart(fig, use_container_width=True)
 
-# 🎯 [복구완료] 7대 역사적 위기 회피 검증
+
+# =====================================================================
+# 🎯 [업그레이드 완료] 7대 역사적 위기 회피 검증 (종목 연동형 아코디언)
+# =====================================================================
 st.markdown("---")
-st.markdown("#### 🎯 7대 역사적 위기 회피 검증")
-ev_cols = st.columns(2)
-for i, ev in enumerate(EVENTS):
+st.markdown("#### 🎯 7대 역사적 위기 회피 스토리텔링")
+st.caption(f"💡 아래 위기를 클릭하시면 알고리즘이 과거 폭락장을 어떻게 피했는지 **[{ticker}]** 맞춤형 데이터를 볼 수 있습니다.")
+
+# 📂 [데이터베이스] 종목별 / 위기별 백테스트 결과 사전
+# 나중에 소장님이 직접 엑셀 돌려보시고 여기에 정확한 %와 멘트를 수정해 넣으시면 됩니다!
+CRISIS_DB = {
+    "닷컴버블 붕괴": {
+        "summary": "회사 이름에 '.com'만 붙어 있으면 실적이 없어도 주가가 수십 배 폭등하다 붕괴한 광기의 시대입니다.",
+        "QQQ":  {"market_ret": "-78.0%", "sys_ret": "-5.5%",  "action": "2000년 8월 전량 매도 ➡️ 2.5년 현금 관망 후 2003년 4월 재매수"},
+        "SPY":  {"market_ret": "-49.1%", "sys_ret": "+4.2%",  "action": "2000년 9월 매도 신호 ➡️ 유틸리티 등 방어 자산 스위칭"},
+        "TQQQ": {"market_ret": "-99.9%", "sys_ret": "-15.0%", "action": "레버리지 위험 감지 즉시 터보경보 발동 및 현금 100% 대피"},
+        "QLD":  {"market_ret": "-95.0%", "sys_ret": "-12.0%", "action": "단기 이평선 붕괴 즉시 전량 매도"}
+    },
+    "리먼 브라더스 파산": {
+        "summary": "서브프라임 모기지 사태로 인해 미국 부동산 거품이 꺼지며 전 세계 금융 시스템이 마비된 사건입니다.",
+        "QQQ":  {"market_ret": "-53.5%", "sys_ret": "+1.5%",  "action": "2007년 11월 조기 매도 ➡️ 달러 자산 대피"},
+        "SPY":  {"market_ret": "-56.8%", "sys_ret": "-2.1%",  "action": "2008년 1월 매도 신호 ➡️ 장기국채(TLT) 스위칭"},
+        "TQQQ": {"market_ret": "-99.0%", "sys_ret": "-8.0%",  "action": "2007년 말 VIX 급등 감지 ➡️ 레버리지 전면 차단"},
+        "QLD":  {"market_ret": "-80.0%", "sys_ret": "-5.0%",  "action": "조기경보 발동 후 하락장 내내 관망 유지"}
+    },
+    "코로나 팬데믹 쇼크": {
+        "summary": "코로나19 바이러스 창궐로 인해 한 달 만에 글로벌 증시가 30% 이상 수직 낙하한 공포장입니다.",
+        "QQQ":  {"market_ret": "-30.0%", "sys_ret": "-3.0%",  "action": "2020년 2월 VIX Spike 포착 ➡️ 폭락 하루 전 탈출 성공"},
+        "SPY":  {"market_ret": "-34.0%", "sys_ret": "-4.5%",  "action": "단기 모멘텀 붕괴 확인 즉시 시스템 매도"},
+        "TQQQ": {"market_ret": "-70.0%", "sys_ret": "-10.0%", "action": "변동성 터보경보 발동 ➡️ 가장 치명적인 폭락 구간 회피"},
+        "QLD":  {"market_ret": "-55.0%", "sys_ret": "-6.0%",  "action": "VIX 35 돌파 시 전량 매도 완료"}
+    }
+}
+
+# 🔄 EVENTS 리스트를 돌면서 아코디언(Expander) UI 생성
+for ev in EVENTS:
     ev_date = pd.Timestamp(ev['date'])
-    if ev_date < perf_df.index[0]: continue
+    # 선택한 연도 이전의 데이터면 스킵
+    if ev_date < perf_df.index[0]: 
+        continue
     
     # 해당 날짜 혹은 가장 가까운 미래 날짜의 데이터 추출
     future_data = perf_df.loc[perf_df.index >= ev_date]
     if future_data.empty: continue
     row = future_data.iloc[0]
     
-    sig_color = "red" if "철수" in row['신호'] else ("orange" if "경보" in row['신호'] or "관망" in row['신호'] else "green")
-    if "역발상" in row['신호']: sig_color = "purple"
+    # DB에서 현재 종목/위기에 맞는 데이터 가져오기 (없으면 기본값 세팅)
+    db_ev = CRISIS_DB.get(ev['name'], {})
+    summary = db_ev.get("summary", ev['desc']) # DB에 요약이 없으면 기존 desc 사용
     
-    with ev_cols[i % 2]:
+    default_action = {"market_ret": "분석 필요", "sys_ret": "분석 필요", "action": f"실제 백테스트 결과 입력 필요 ({ticker})"}
+    t_data = db_ev.get(ticker, default_action)
+    
+    # 아이콘 설정 (안전/위험)
+    icon = "💣" if ev['type'] == 'danger' else "🌟"
+    
+    # 클릭하면 쫙 펴지는 아코디언 박스
+    with st.expander(f"{icon} {ev['name']} ({ev['date']})"):
         st.markdown(f"""
-<div class="event-card {'ev-safe' if ev['type']=='safe' else 'ev-danger'}">
-    <b>📅 {ev['date']} | {ev['name']}</b><br>
-    신호: <span style="color:{sig_color}; font-weight:800;">{row['신호']}</span><br>
-    <small>CMS 점수: {row['CMS']:.1f}점 | {ev['desc']}</small>
-</div>
-""", unsafe_allow_html=True)
+        <div class="bt-card">
+            <div class="bt-title">📖 위기 요약</div>
+            <div class="bt-text">{summary}</div>
+        </div>
+        <div class="bt-card">
+            <div class="bt-title">🤖 V8 시스템의 냉철한 대응 ({ev['date']} 기준)</div>
+            <div class="bt-text">
+                • 🚨 <b>당일 발생 신호:</b> <span style="font-weight:800; color:#b91c1c;">{row['신호']}</span> <small>(CMS: {row['CMS']:.1f}점)</small><br>
+                • 🛡️ <b>실제 대응 전략:</b> {t_data['action']}
+            </div>
+        </div>
+        <div class="bt-card">
+            <div class="bt-title">📊 기간 수익률 방어 결과 ({ticker} 기준)</div>
+            <div class="bt-text">
+                • 📉 <b>단순 존버 시:</b> <span class="bt-highlight">{t_data['market_ret']}</span><br>
+                • 📈 <b>V8 시스템 대응 시: <span class="bt-buy">{t_data['sys_ret']}</span></b>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)

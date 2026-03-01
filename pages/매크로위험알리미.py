@@ -21,66 +21,38 @@ except ImportError as e:
 
 st.set_page_config(page_title="매크로 위험알리미", page_icon="📊", layout="wide")
 
+# 🎨 [디자인 교체] 카드 공통 스타일 (흰색 배제, 시인성 극대화)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 .block-container { padding-top: 3.5rem !important; }
 
-/* ── 섹터 카드 ── */
-.metric-card {
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px;
-    border: 1px solid #e5e7eb;
-    margin-bottom: 8px;
-    min-width: 0;
-    word-break: break-word;
+/* ── 소장님 전용 통합 카드 ── */
+.unified-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
-.buy-signal  { border-left: 5px solid #10b981; background: #f0fdf4; }
-.sell-signal { border-left: 5px solid #ef4444; background: #fef2f2; }
-.wait-signal { border-left: 5px solid #f59e0b; background: #fffbeb; }
-.ticker-header { font-size: 0.85rem; font-weight: 700; color: #111827 !important; margin-bottom: 2px; }
-.score-box     { font-size: 0.75rem; color: #374151 !important; line-height: 1.5; }
 
-/* ── 개별종목 카드 ── */
-.stock-card {
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px 12px;
-    border: 1px solid #e5e7eb;
-    margin-bottom: 8px;
-    min-width: 0;
-    word-break: break-word;
-}
-.stock-up   { border-left: 5px solid #10b981; background: #f0fdf4; }
-.stock-down { border-left: 5px solid #ef4444; background: #fef2f2; }
-.stock-flat { border-left: 5px solid #9ca3af; background: #f9fafb; }
-.stock-name { font-size: 0.9rem; font-weight: 700; color: #111827; margin-bottom: 3px; }
-.stock-price{ font-size: 1.05rem; font-weight: 800; margin-bottom: 2px; }
-.stock-meta { font-size: 0.72rem; color: #6b7280; line-height: 1.6; }
+/* 🎨 신호별 포인트 컬러 (글자색 진하게 고정) */
+.card-buy  { border-left: 10px solid #10b981; background: #ecfdf5; color: #064e3b !important; } 
+.card-wait { border-left: 10px solid #f59e0b; background: #fffbeb; color: #78350f !important; } 
+.card-exit { border-left: 10px solid #ef4444; background: #fef2f2; color: #7f1d1d !important; } 
 
-/* ── 핵심섹터 카드 ── */
-.core-card {
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px 12px;
-    border: 1px solid #e5e7eb;
-    margin-bottom: 8px;
-    min-width: 0;
-}
-.core-strong { border-left: 5px solid #10b981; background: #f0fdf4; }
-.core-weak   { border-left: 5px solid #ef4444; background: #fef2f2; }
-.core-mid    { border-left: 5px solid #f59e0b; background: #fffbeb; }
-.core-name   { font-size: 0.88rem; font-weight: 700; color: #111827; margin-bottom: 3px; }
-.core-score  { font-size: 1.1rem; font-weight: 800; margin-bottom: 2px; }
-.core-meta   { font-size: 0.72rem; color: #6b7280; }
+.ticker-label { font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; display: block; }
+.signal-text  { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; display: block; }
+.score-line   { font-size: 0.8rem; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 6px; margin-top: 4px; color: #334155; line-height: 1.4; }
 
 @media (max-width: 640px) {
     .block-container { padding-top: 4rem !important; }
     h1 { font-size: 1.2rem !important; }
-    .ticker-header, .stock-name, .core-name { font-size: 0.78rem; }
-    .score-box, .stock-meta, .core-meta     { font-size: 0.68rem; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -150,7 +122,7 @@ with tab1:
             use_container_width=True, height=500
         )
 
-    with sub_c:
+    with sub_c: # 🎴 고대비 카드 뷰 이식
         def get_sig_order(row):
             if row['S-score'] > 0 and row['L-score'] > 0: return 0
             if row['S-score'] < 0 and row['L-score'] < 0: return 2
@@ -160,7 +132,7 @@ with tab1:
         df_card['_o'] = df_card.apply(get_sig_order, axis=1)
         df_card = df_card.sort_values(['_o','S-L'], ascending=[True, False]).reset_index(drop=True)
 
-        sig_labels = {0:"✅ 매수 신호", 1:"⚠️ 관망", 2:"🚨 도망챠"}
+        sig_labels = {0:"✅ 매수 구간", 1:"⚠️ 관망 구간", 2:"🚨 도망챠 구간"}
         sig_colors = {0:"#d1fae5",     1:"#fef9c3", 2:"#fee2e2"}
         current_sig = -1
         cols = st.columns(2)
@@ -171,19 +143,23 @@ with tab1:
             if o != current_sig:
                 current_sig = o
                 st.markdown(f"<div style='background:{sig_colors[o]};padding:6px 12px;border-radius:6px;"
-                            f"font-weight:700;font-size:0.82rem;margin:10px 0 6px 0;'>{sig_labels[o]}</div>",
+                            f"font-weight:700;font-size:0.82rem;margin:10px 0 6px 0; color:#1e293b;'>{sig_labels[o]}</div>",
                             unsafe_allow_html=True)
                 col_idx = 0
                 cols = st.columns(2)
-            sc = ["buy-signal","wait-signal","sell-signal"][o]
-            ic = ["✅","⚠️","🚨"][o]
+            
+            css = ["card-buy", "card-wait", "card-exit"][o]
+            sig_txt = ["✅ 매수 신호", "⚠️ 관망", "🚨 도망챠"][o]
+            ic = ["🟢", "🟡", "🔴"][o]
+            
             with cols[col_idx % 2]:
                 st.markdown(f"""
-<div class="metric-card {sc}">
-    <div class="ticker-header">{ic} {row['섹터']} <span style='color:#9ca3af;font-weight:400'>({row['티커']})</span></div>
-    <div class="score-box"><b>S-L: {row['S-L']:.3f}</b> | <b>{row['20일(%)']:.2f}%</b><br>
-    L: {row['L-score']:.3f} / S: {row['S-score']:.3f}</div>
-</div>""", unsafe_allow_html=True)
+                <div class="unified-card {css}">
+                    <span class="ticker-label">{ic} {row['섹터']} <span style='color:#64748b;font-weight:400;font-size:0.9rem;'>({row['티커']})</span></span>
+                    <span class="signal-text">{sig_txt}</span>
+                    <div class="score-line">S-L: <b>{row['S-L']:.3f}</b> | 20일: <b>{row['20일(%)']:.2f}%</b><br>
+                    L: {row['L-score']:.3f} / S: {row['S-score']:.3f}</div>
+                </div>""", unsafe_allow_html=True)
             col_idx += 1
 
     st.markdown("##### 💡 퀀트 지표 핵심 요약")
@@ -207,8 +183,7 @@ with tab2:
         )
         st.caption("💡 🟩 코어 우량주 / 🟨 위성 자산 / 🟥 레버리지·고변동성")
 
-    with sub_c2:
-        # 연초대비 기준 정렬
+    with sub_c2: # 🎴 고대비 카드 뷰 이식
         df_stk = df_individual.copy().sort_values('연초대비', ascending=False).reset_index(drop=True)
         cols2 = st.columns(2)
         for i, row in df_stk.iterrows():
@@ -218,8 +193,11 @@ with tab2:
             high  = row.get('high대비', 0)
 
             if pd.isna(ytd): ytd = 0
-            sc = "stock-up" if ytd > 0 else ("stock-down" if ytd < 0 else "stock-flat")
-            ic = "📈" if ytd > 0 else ("📉" if ytd < 0 else "➡️")
+            
+            css = "card-buy" if ytd > 0 else ("card-exit" if ytd < 0 else "card-wait")
+            sig_txt = "✅ 매수 신호" if ytd > 0 else ("🚨 도망챠" if ytd < 0 else "⚠️ 관망")
+            ic = "🟢" if ytd > 0 else ("🔴" if ytd < 0 else "🟡")
+            
             ytd_str   = f"{ytd:+.1f}%" if not pd.isna(ytd) else "N/A"
             ma200_str = f"{ma200:+.1f}%" if not pd.isna(ma200) else "N/A"
             prev_str  = f"{prev:+.1f}%" if not pd.isna(prev) else "N/A"
@@ -227,14 +205,14 @@ with tab2:
 
             with cols2[i % 2]:
                 st.markdown(f"""
-<div class="stock-card {sc}">
-    <div class="stock-name">{ic} {row['티커']}</div>
-    <div class="stock-price" style="color:{'#059669' if ytd>0 else '#dc2626'}">${row['현재가']:,.2f}</div>
-    <div class="stock-meta">
-        연초대비: <b>{ytd_str}</b> &nbsp;|&nbsp; 전일: <b>{prev_str}</b><br>
-        200일선: <b>{ma200_str}</b> &nbsp;|&nbsp; 고점대비: <b>{high_str}</b>
-    </div>
-</div>""", unsafe_allow_html=True)
+                <div class="unified-card {css}">
+                    <span class="ticker-label">{ic} {row['티커']} <span style='font-size:0.9rem;font-weight:400'>| ${row['현재가']:,.2f}</span></span>
+                    <span class="signal-text">{sig_txt} <span style='font-weight:400'>(YTD: {ytd_str})</span></span>
+                    <div class="score-line">
+                        전일: <b>{prev_str}</b> | 200일: <b>{ma200_str}</b><br>
+                        고점대비: <b>{high_str}</b>
+                    </div>
+                </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════
 # TAB3: 11개 핵심 섹터
@@ -251,23 +229,25 @@ with tab3:
             use_container_width=True, height=450
         )
 
-    with sub_c3:
+    with sub_c3: # 🎴 고대비 카드 뷰 이식
         df_core_sorted = df_core.sort_values('S-SCORE', ascending=False).reset_index(drop=True)
         cols3 = st.columns(2)
         for i, row in df_core_sorted.iterrows():
             sc  = float(row['S-SCORE'])
             ret = float(row['20일(%)'])
-            css = "core-strong" if sc > 0.05 else ("core-weak" if sc < -0.05 else "core-mid")
-            ic  = "🔥" if sc > 0.1 else ("❄️" if sc < -0.1 else "😐")
             rank = int(row['R1']) if 'R1' in row else i+1
+            
+            css = "card-buy" if sc > 0.05 else ("card-exit" if sc < -0.05 else "card-wait")
+            sig_txt = "✅ 매수 신호" if sc > 0.05 else ("🚨 도망챠" if sc < -0.05 else "⚠️ 관망")
+            ic = "🟢" if sc > 0.05 else ("🔴" if sc < -0.05 else "🟡")
 
             with cols3[i % 2]:
                 st.markdown(f"""
-<div class="core-card {css}">
-    <div class="core-name">{ic} #{rank} {row['섹터']} <span style='color:#9ca3af;font-weight:400'>({row['티커']})</span></div>
-    <div class="core-score" style="color:{'#059669' if sc>0 else '#dc2626'}">S: {sc:+.3f}</div>
-    <div class="core-meta">20일 수익률: <b>{ret:+.2f}%</b></div>
-</div>""", unsafe_allow_html=True)
+                <div class="unified-card {css}">
+                    <span class="ticker-label">{ic} #{rank} {row['섹터']} <span style='color:#64748b;font-weight:400;font-size:0.9rem;'>({row['티커']})</span></span>
+                    <span class="signal-text">{sig_txt}</span>
+                    <div class="score-line">S점수: <b>{sc:+.3f}</b> | 20일 수익: <b>{ret:+.2f}%</b></div>
+                </div>""", unsafe_allow_html=True)
 
 # [7] 차트
 st.markdown("---")
@@ -297,4 +277,3 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
-

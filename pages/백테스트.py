@@ -39,17 +39,6 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 st.title("🛡️ V8 하이브리드: 정밀 리포트")
 st.caption("역사적 위기 검증 시스템을 통해 전략을 백테스트합니다.")
 
-# 💡 역사적 위기 리스트 정의
-EVENTS = [
-    {"date": "2000-03-24", "name": "닷컴버블 붕괴", "type": "danger", "desc": "나스닥 -80% 하락 대피 테스트"},
-    {"date": "2008-09-15", "name": "리먼 브라더스 파산", "type": "danger", "desc": "금융위기 정점 대응력"},
-    {"date": "2011-08-08", "name": "미국 신용등급 강등", "type": "danger", "desc": "단기 폭락장 세이프가드 작동"},
-    {"date": "2018-12-24", "name": "미중 무역전쟁", "type": "safe", "desc": "하락 추세 끝자락 매수 신호"},
-    {"date": "2020-02-24", "name": "코로나 팬데믹 쇼크", "type": "danger", "desc": "VIX Spike 조기경보의 핵심"},
-    {"date": "2022-01-05", "name": "인플레이션 하락장", "type": "danger", "desc": "1년 내내 이어진 금리인상기 회피"},
-    {"date": "2025-04-10", "name": "트럼프 글로벌 관세 쇼크", "type": "danger", "desc": "작년 4월 V자 반등장 정밀 타격 테스트"}
-]
-
 # ── 데이터 로딩 (완벽 복구 버그 픽스!) ──
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_v8_custom_data(ticker, start_year):
@@ -180,7 +169,7 @@ st.plotly_chart(fig, use_container_width=True)
 # =====================================================================
 st.markdown("---")
 st.markdown("#### 🎯 역사적 위기 회피 스토리텔링 (실시간 계산 팩트)")
-st.caption(f"💡 아래 위기를 클릭하시면 알고리즘이 해당 기간 동안 <b>[{ticker}]</b> 폭락을 어떻게 피했는지 실시간 계산된 데이터를 보여줍니다.")
+st.caption(f"💡 아래 위기를 클릭하시면 알고리즘이 해당 기간 동안 <b>[{ticker}]</b> 폭락을 어떻게 피했는지 100% 실시간 데이터로 보여줍니다.")
 
 # 💡 위기별 [시작일, 종료일, 요약설명] 정의 (가짜 데이터 영구 삭제!)
 CRISIS_PERIODS = {
@@ -263,51 +252,6 @@ for name, info in CRISIS_PERIODS.items():
             <div class="bt-text">
                 • 📉 <b>단순 존버 시:</b> <span class="bt-highlight">{bah_return:+.1f}%</span><br>
                 • 📈 <b>V8 시스템 대응 시: <span class="{sys_color}">{sys_return:+.1f}%</span></b>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# 🔄 EVENTS 리스트를 돌면서 아코디언(Expander) UI 생성
-for ev in EVENTS:
-    ev_date = pd.Timestamp(ev['date'])
-    # 선택한 연도 이전의 데이터면 스킵
-    if ev_date < perf_df.index[0]: 
-        continue
-    
-    # 해당 날짜 혹은 가장 가까운 미래 날짜의 데이터 추출
-    future_data = perf_df.loc[perf_df.index >= ev_date]
-    if future_data.empty: continue
-    row = future_data.iloc[0]
-    
-    # DB에서 현재 종목/위기에 맞는 데이터 가져오기
-    db_ev = CRISIS_DB.get(ev['name'], {})
-    summary = db_ev.get("summary", ev['desc'])
-    
-    default_action = {"market_ret": "데이터 수집 중", "sys_ret": "데이터 수집 중", "action": f"V8 로직 분석 완료 대기 중"}
-    t_data = db_ev.get(ticker, default_action)
-    
-    # 아이콘 설정 (안전/위험)
-    icon = "💣" if ev['type'] == 'danger' else "🌟"
-    
-    # 클릭하면 쫙 펴지는 아코디언 박스
-    with st.expander(f"{icon} {ev['name']} ({ev['date'][:7]})"):
-        st.markdown(f"""
-        <div class="bt-card">
-            <div class="bt-title">📖 위기 요약</div>
-            <div class="bt-text">{summary}</div>
-        </div>
-        <div class="bt-card">
-            <div class="bt-title">🤖 V8 시스템의 냉철한 대응 ({ev['date']} 전후)</div>
-            <div class="bt-text">
-                • 🚨 <b>당일 발생 신호:</b> <span style="font-weight:800; color:#b91c1c;">{row['신호']}</span> <small>(CMS: {row['CMS']:.1f}점)</small><br>
-                • 🛡️ <b>실제 대응 전략:</b> {t_data['action']}
-            </div>
-        </div>
-        <div class="bt-card">
-            <div class="bt-title">📊 기간 수익률 방어 결과 ({ticker} 기준)</div>
-            <div class="bt-text">
-                • 📉 <b>단순 존버 시:</b> <span class="bt-highlight">{t_data['market_ret']}</span><br>
-                • 📈 <b>V8 시스템 대응 시: <span class="bt-buy">{t_data['sys_ret']}</span></b>
             </div>
         </div>
         """, unsafe_allow_html=True)

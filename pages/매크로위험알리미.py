@@ -21,7 +21,7 @@ except ImportError as e:
 
 st.set_page_config(page_title="매크로 위험알리미", page_icon="📊", layout="wide")
 
-# 🎨 [디자인 교체] 카드 공통 스타일 (흰색 배제, 시인성 극대화)
+# 🎨 [디자인 설정] 시인성 극대화 통합 스타일
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
@@ -91,199 +91,83 @@ top_5_sectors = df_sectors.head(5)['섹터'].tolist()
 safe_assets   = ['CASH', '장기국채', '물가연동채', '유틸리티', '필수소비재']
 safe_count    = sum(1 for s in top_5_sectors if s in safe_assets)
 if safe_count >= 2:
-    st.error(f"🚨 **안전자산 쏠림 경보 발령!** 현재 상위 5개 섹터 중 {safe_count}개가 방어적 자산입니다. "
-             "스마트머니가 피난 중입니다. 관망하십시오!")
+    st.error(f"🚨 **안전자산 쏠림 경보 발령!** 스마트머니가 피난 중입니다. 관망하십시오!")
 elif safe_count == 1:
     st.warning("⚠️ **안전자산 상승 주의:** 상위 5위권 내에 방어적 자산이 포착되었습니다.")
 
 st.markdown("---")
-st.info("📱 모바일에서 표가 잘리면 **테이블을 좌우로 스크롤**하거나 **카드 뷰**를 이용하세요!")
 
 # [6] 메인 탭
 tab1, tab2, tab3 = st.tabs(["📈 섹터 ETF", "💹 개별 종목", "🎯 11개 핵심 섹터"])
 
-# ══════════════════════════════════════
-# TAB1: 섹터 ETF
-# ══════════════════════════════════════
+# --- TAB1: 섹터 ETF ---
 with tab1:
     st.subheader("📈 섹터 ETF 스코어 (S-L 순위)")
     sub_t, sub_c = st.tabs(["📑 테이블 뷰", "🎴 카드 뷰"])
-
     with sub_t:
         def hb(row):
             s = row['섹터']
             if s in ['S&P', 'NASDAQ']:      return ['background-color:#d9d9d9;font-weight:bold'] * len(row)
             elif s in ['CASH','물가연동채','장기국채']: return ['background-color:#e2efda;color:#385723;font-weight:bold'] * len(row)
             return [''] * len(row)
-        st.dataframe(
-            df_sectors.style.apply(hb, axis=1)
-                .background_gradient(cmap='RdYlGn', subset=['L-score','S-score','S-L','20일(%)'])
-                .format({'L-score':'{:.2f}','S-score':'{:.2f}','S-L':'{:.2f}','20일(%)':'{:.2f}%'}),
-            use_container_width=True, height=500
-        )
-
-    with sub_c: # 🎴 고대비 카드 뷰 이식
-        def get_sig_order(row):
-            if row['S-score'] > 0 and row['L-score'] > 0: return 0
-            if row['S-score'] < 0 and row['L-score'] < 0: return 2
-            return 1
-
+        st.dataframe(df_sectors.style.apply(hb, axis=1).background_gradient(cmap='RdYlGn', subset=['L-score','S-score','S-L','20일(%)']).format({'L-score':'{:.2f}','S-score':'{:.2f}','S-L':'{:.2f}','20일(%)':'{:.2f}%'}), use_container_width=True, height=500)
+    with sub_c:
         df_card = df_sectors.copy()
-        df_card['_o'] = df_card.apply(get_sig_order, axis=1)
+        df_card['_o'] = df_card.apply(lambda r: 0 if r['S-score']>0 and r['L-score']>0 else (2 if r['S-score']<0 and r['L-score']<0 else 1), axis=1)
         df_card = df_card.sort_values(['_o','S-L'], ascending=[True, False]).reset_index(drop=True)
-
-        sig_labels = {0:"✅ 매수 구간", 1:"⚠️ 관망 구간", 2:"🚨 도망챠 구간"}
-        sig_colors = {0:"#d1fae5",     1:"#fef9c3", 2:"#fee2e2"}
-        current_sig = -1
-        cols = st.columns(2)
-        col_idx = 0
-
+        sig_labels, sig_colors = {0:"✅ 매수 구간", 1:"⚠️ 관망 구간", 2:"🚨 도망챠 구간"}, {0:"#d1fae5", 1:"#fef9c3", 2:"#fee2e2"}
+        current_sig, cols, col_idx = -1, st.columns(2), 0
         for _, row in df_card.iterrows():
             o = row['_o']
             if o != current_sig:
                 current_sig = o
-                st.markdown(f"<div style='background:{sig_colors[o]};padding:6px 12px;border-radius:6px;"
-                            f"font-weight:700;font-size:0.82rem;margin:10px 0 6px 0; color:#1e293b;'>{sig_labels[o]}</div>",
-                            unsafe_allow_html=True)
-                col_idx = 0
-                cols = st.columns(2)
-            
-            css = ["card-buy", "card-wait", "card-exit"][o]
-            sig_txt = ["✅ 매수 신호", "⚠️ 관망", "🚨 도망챠"][o]
-            ic = ["🟢", "🟡", "🔴"][o]
-            
+                st.markdown(f"<div style='background:{sig_colors[o]};padding:6px 12px;border-radius:6px;font-weight:700;font-size:0.82rem;margin:10px 0 6px 0; color:#1e293b;'>{sig_labels[o]}</div>", unsafe_allow_html=True)
+                cols, col_idx = st.columns(2), 0
+            css, sig_txt, ic = ["card-buy", "card-wait", "card-exit"][o], ["✅ 매수 신호", "⚠️ 관망", "🚨 도망챠"][o], ["🟢", "🟡", "🔴"][o]
             with cols[col_idx % 2]:
-                st.markdown(f"""
-                <div class="unified-card {css}">
-                    <span class="ticker-label">{ic} {row['섹터']} <span style='color:#64748b;font-weight:400;font-size:0.9rem;'>({row['티커']})</span></span>
-                    <span class="signal-text">{sig_txt}</span>
-                    <div class="score-line">S-L: <b>{row['S-L']:.3f}</b> | 20일: <b>{row['20일(%)']:.2f}%</b><br>
-                    L: {row['L-score']:.3f} / S: {row['S-score']:.3f}</div>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(f'<div class="unified-card {css}"><span class="ticker-label">{ic} {row["섹터"]} ({row["티커"]})</span><span class="signal-text">{sig_txt}</span><div class="score-line">S-L: <b>{row["S-L"]:.3f}</b> | 20일: <b>{row["20일(%)"]:.2f}%</b><br>L: {row["L-score"]:.3f} / S: {row["S-score"]:.3f}</div></div>', unsafe_allow_html=True)
             col_idx += 1
 
-    st.markdown("##### 💡 퀀트 지표 핵심 요약")
-    st.caption("**📊 L-score**: 200일선 이격도, 52주 고점 위치 등 장기 추세 점수")
-    st.caption("**🚀 S-score**: 20일선 이격도, 1개월 수익률 등 단기 모멘텀 점수")
-    st.caption("1️⃣ **S-L**: 클수록 최근 자금 유입 가속 중  2️⃣ **미너비니 필터**: S<0이면 최하위 강등  3️⃣ **20일(%)**: 최근 1개월 실제 수익률")
-
-# ══════════════════════════════════════
-# TAB2: 개별 종목
-# ══════════════════════════════════════
+# --- TAB2: 개별 종목 (아이콘 복구 완료) ---
 with tab2:
     st.subheader("💹 개별 종목 추적")
     sub_t2, sub_c2 = st.tabs(["📑 테이블 뷰", "🎴 카드 뷰"])
-
     with sub_t2:
-        st.dataframe(
-            df_individual.style
-                .background_gradient(cmap='RdYlGn', subset=['연초대비','high대비','200대비','전일대비','52저대비'], vmin=-10, vmax=10)
-                .format({'현재가':'{:.2f}','연초대비':'{:.1f}%','high대비':'{:.1f}%','200대비':'{:.1f}%','전일대비':'{:.1f}%','52저대비':'{:.1f}%'}),
-            use_container_width=True, height=450
-        )
+        st.dataframe(df_individual.style.background_gradient(cmap='RdYlGn', subset=['연초대비','high대비','200대비','전일대비','52저대비'], vmin=-10, vmax=10).format({'현재가':'{:.2f}','연초대비':'{:.1f}%','high대비':'{:.1f}%','200대비':'{:.1f}%','전일대비':'{:.1f}%','52저대비':'{:.1f}%'}), use_container_width=True, height=450)
         st.caption("💡 🟩 코어 우량주 / 🟨 위성 자산 / 🟥 레버리지·고변동성")
-
-    with sub_c2: # 🎴 고대비 카드 뷰 이식 + 자산군 컬러 복구!
+    with sub_c2:
         df_stk = df_individual.copy().sort_values('연초대비', ascending=False).reset_index(drop=True)
         cols2 = st.columns(2)
         for i, row in df_stk.iterrows():
-            ytd = row.get('연초대비', 0)
-            ma200 = row.get('200대비', 0)
-            prev  = row.get('전일대비', 0)
-            high  = row.get('high대비', 0)
-            ticker_str = row['티커']
-
-            # 💡 [핵심 복구] 종목별 자산군 색상 자동 분류 로직
-            if ticker_str in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ']:
-                asset_icon = "🟥" # 레버리지/고변동성
-            elif ticker_str in ['SPY', 'QQQ', 'DIA', 'IWM', 'VOO', 'IVV', 'VT']:
-                asset_icon = "🟩" # 코어 우량주
-            else:
-                asset_icon = "🟨" # 위성 자산 (일반 개별주 포함)
-
-            if pd.isna(ytd): ytd = 0
-            
-            css = "card-buy" if ytd > 0 else ("card-exit" if ytd < 0 else "card-wait")
-            sig_txt = "✅ 매수 신호" if ytd > 0 else ("🚨 도망챠" if ytd < 0 else "⚠️ 관망")
-            ic = "🟢" if ytd > 0 else ("🔴" if ytd < 0 else "🟡")
-            
-            ytd_str   = f"{ytd:+.1f}%" if not pd.isna(ytd) else "N/A"
-            ma200_str = f"{ma200:+.1f}%" if not pd.isna(ma200) else "N/A"
-            prev_str  = f"{prev:+.1f}%" if not pd.isna(prev) else "N/A"
-            high_str  = f"{high:+.1f}%" if not pd.isna(high) else "N/A"
-
+            ytd, tick = row.get('연초대비', 0), row['티커']
+            # 자산군 분류
+            asset_icon = "🟥" if tick in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ'] else ("🟩" if tick in ['SPY', 'QQQ', 'DIA', 'IWM', 'VOO', 'IVV', 'VT'] else "🟨")
+            css, sig_txt, ic = ("card-buy", "✅ 매수 신호", "🟢") if ytd > 0 else (("card-exit", "🚨 도망챠", "🔴") if ytd < 0 else ("card-wait", "⚠️ 관망", "🟡"))
             with cols2[i % 2]:
-                st.markdown(f"""
-                <div class="unified-card {css}">
-                    <span class="ticker-label">{ic} {asset_icon} {ticker_str} <span style='font-size:0.9rem;font-weight:400'>| ${row['현재가']:,.2f}</span></span>
-                    <span class="signal-text">{sig_txt} <span style='font-weight:400'>(YTD: {ytd_str})</span></span>
-                    <div class="score-line">
-                        전일: <b>{prev_str}</b> | 200일: <b>{ma200_str}</b><br>
-                        고점대비: <b>{high_str}</b>
-                    </div>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(f'<div class="unified-card {css}"><span class="ticker-label">{ic} {asset_icon} {tick} | ${row["현재가"]:,.2f}</span><span class="signal-text">{sig_txt} (YTD: {ytd:+.1f}%)</span><div class="score-line">전일: {row["전일대비"]:+.1f}% | 200일선: {row["200대비"]:+.1f}%<br>고점대비: {row["high대비"]:+.1f}%</div></div>', unsafe_allow_html=True)
 
-# ══════════════════════════════════════
-# TAB3: 11개 핵심 섹터
-# ══════════════════════════════════════
+# --- TAB3: 핵심 섹터 ---
 with tab3:
     st.subheader("🎯 11개 핵심 섹터 현황")
     sub_t3, sub_c3 = st.tabs(["📑 테이블 뷰", "🎴 카드 뷰"])
-
     with sub_t3:
-        st.dataframe(
-            df_core.style
-                .background_gradient(cmap='RdYlGn', subset=['S-SCORE','20일(%)'])
-                .format({'S-SCORE':'{:.2f}','20일(%)':'{:.2f}%'}),
-            use_container_width=True, height=450
-        )
-
-    with sub_c3: # 🎴 고대비 카드 뷰 이식
+        st.dataframe(df_core.style.background_gradient(cmap='RdYlGn', subset=['S-SCORE','20일(%)']).format({'S-SCORE':'{:.2f}','20일(%)':'{:.2f}%'}), use_container_width=True, height=450)
+    with sub_c3:
         df_core_sorted = df_core.sort_values('S-SCORE', ascending=False).reset_index(drop=True)
         cols3 = st.columns(2)
         for i, row in df_core_sorted.iterrows():
-            sc  = float(row['S-SCORE'])
-            ret = float(row['20일(%)'])
-            rank = int(row['R1']) if 'R1' in row else i+1
-            
-            css = "card-buy" if sc > 0.05 else ("card-exit" if sc < -0.05 else "card-wait")
-            sig_txt = "✅ 매수 신호" if sc > 0.05 else ("🚨 도망챠" if sc < -0.05 else "⚠️ 관망")
-            ic = "🟢" if sc > 0.05 else ("🔴" if sc < -0.05 else "🟡")
-
+            sc = float(row['S-SCORE'])
+            css, sig_txt, ic = ("card-buy", "✅ 매수 신호", "🟢") if sc > 0.05 else (("card-exit", "🚨 도망챠", "🔴") if sc < -0.05 else ("card-wait", "⚠️ 관망", "🟡"))
             with cols3[i % 2]:
-                st.markdown(f"""
-                <div class="unified-card {css}">
-                    <span class="ticker-label">{ic} #{rank} {row['섹터']} <span style='color:#64748b;font-weight:400;font-size:0.9rem;'>({row['티커']})</span></span>
-                    <span class="signal-text">{sig_txt}</span>
-                    <div class="score-line">S점수: <b>{sc:+.3f}</b> | 20일 수익: <b>{ret:+.2f}%</b></div>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(f'<div class="unified-card {css}"><span class="ticker-label">{ic} #{int(row.get("R1", i+1))} {row["섹터"]}</span><span class="signal-text">{sig_txt}</span><div class="score-line">S점수: <b>{sc:+.3f}</b> | 20일 수익: <b>{row["20일(%)"]:+.2f}%</b></div></div>', unsafe_allow_html=True)
 
-# [7] 차트
+# [7] 상세 차트
 st.markdown("---")
 selected = st.selectbox("📉 상세 분석 차트 선택", list(all_data['sector_etfs'].keys()))
 if selected:
-    hist   = all_data['sector_etfs'][selected]['history'].copy()
-    ticker = all_data['sector_etfs'][selected]['ticker']
-    if isinstance(hist.columns, pd.MultiIndex):
-        hist.columns = hist.columns.get_level_values(0)
-    date_list = hist.index.tolist()
-
-    def to_1d(col):
-        s = hist[col]
-        if isinstance(s, pd.DataFrame): s = s.iloc[:, 0]
-        return s.values.flatten()
-
+    hist = all_data['sector_etfs'][selected]['history'].copy()
+    if isinstance(hist.columns, pd.MultiIndex): hist.columns = hist.columns.get_level_values(0)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=date_list, y=to_1d('Close'), name='종가', line=dict(color='blue', width=2)))
-    if 'MA20'  in hist.columns: fig.add_trace(go.Scatter(x=date_list, y=to_1d('MA20'),  name='MA20',  line=dict(dash='dash', color='orange')))
-    if 'MA200' in hist.columns: fig.add_trace(go.Scatter(x=date_list, y=to_1d('MA200'), name='MA200', line=dict(dash='dot',  color='green', width=2)))
-
-    view_days = min(len(hist), 500)
-    fig.update_layout(
-        title=f"{selected} ({ticker}) 분석 차트", template="plotly_white", height=450,
-        xaxis_range=[date_list[-view_days], date_list[-1]], hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(l=10, r=10, t=50, b=10)
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'].values.flatten(), name='종가', line=dict(color='blue', width=2)))
+    if 'MA200' in hist.columns: fig.add_trace(go.Scatter(x=hist.index, y=hist['MA200'].values.flatten(), name='MA200', line=dict(dash='dot', color='green', width=2)))
+    st.plotly_chart(fig.update_layout(title=f"{selected} 분석 차트", template="plotly_white", height=450), use_container_width=True)

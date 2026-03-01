@@ -65,7 +65,7 @@ BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 COMMENT_FILE = os.path.join(BASE_DIR, "comments.json")
 UPDATE_FILE  = os.path.join(BASE_DIR, "updates.json")
 
-# 💡 [핵심] 태그 한글화 매핑 딕셔너리
+# 💡 태그 한글화 매핑 딕셔너리
 TAG_MAP = {
     "🔴 버그수정": "tag-fix",
     "🟢 신기능": "tag-feature",
@@ -73,6 +73,7 @@ TAG_MAP = {
     "🟡 모바일": "tag-mobile"
 }
 
+# 💡 소장님의 잃어버린 V1~V4 실록 복원 데이터
 DEFAULT_UPDATES = [
     {
         "version": "v0.4",
@@ -120,10 +121,9 @@ def save_json(path, data):
     except: return False
 
 def render_tag(t):
-    # 예전에 저장된 영어 태그도 한글로 예쁘게 변환해주는 센스!
     old_to_new = {"fix": "🔴 버그수정", "feature": "🟢 신기능", "improve": "🔵 개선", "mobile": "🟡 모바일"}
     korean_tag = old_to_new.get(t, t)
-    css = TAG_MAP.get(korean_tag, "tag-improve") # 기본값 파란색
+    css = TAG_MAP.get(korean_tag, "tag-improve")
     return f'<span class="tag {css}">{korean_tag}</span>'
 
 # ── [1] 히어로 ──────────────────────────────────
@@ -228,11 +228,11 @@ with st.expander("🔐 관리자 로그인", expanded=False):
         st.success("✅ 관리자로 로그인 중입니다.")
         if st.button("로그아웃", key="logout_btn"):
             st.session_state.admin_ok = False
-            st.session_state.edit_index = None # 로그아웃 시 수정 창도 닫기
+            st.session_state.edit_index = None
             st.rerun()
 
 if st.session_state.admin_ok:
-    with st.expander("➕ 새 업데이트 기록 추가", expanded=False):
+    with st.expander("➕ 새 업데이트 기록 추가 및 관리", expanded=False):
         with st.form("update_add_form", clear_on_submit=True):
             c1, c2 = st.columns([1, 1])
             with c1: new_version = st.text_input("버전", placeholder="v0.5")
@@ -240,22 +240,35 @@ if st.session_state.admin_ok:
             new_title = st.text_input("제목", placeholder="업데이트 제목")
             new_desc  = st.text_area("설명", placeholder="변경 내용을 입력하세요", height=80)
             
-            # 💡 [핵심] 한글 태그 선택
             new_tags  = st.multiselect("태그", list(TAG_MAP.keys()))
             
             if st.form_submit_button("📝 추가", use_container_width=True):
                 if not new_title.strip(): st.warning("제목을 입력해주세요!")
                 else:
                     updates = load_json(UPDATE_FILE, DEFAULT_UPDATES)
-                    updates.insert(0, {"version": new_version.strip() or "v?", "date": new_date.strip(),
-                                       "title": new_title.strip(), "desc": new_desc.strip(), "tags": new_tags})
+                    updates.append({"version": new_version.strip() or "v?", "date": new_date.strip(),
+                                    "title": new_title.strip(), "desc": new_desc.strip(), "tags": new_tags})
+                    
+                    # 💡 [핵심] 버전(version) 기준 내림차순(최신순) 자동 정렬 로직!
+                    updates.sort(key=lambda x: x.get('version', ''), reverse=True)
+                    
                     if save_json(UPDATE_FILE, updates):
-                        st.success("✅ 추가되었습니다!")
+                        st.success("✅ 추가 및 자동 정렬되었습니다!")
                         st.rerun()
+        
+        # 💡 [핵심] 잃어버린 실록을 원터치로 복구하는 마법의 버튼
+        st.markdown("---")
+        if st.button("🔄 기록 초기화 (v0.1~v0.4 기본 세팅으로 복구)", use_container_width=True):
+            save_json(UPDATE_FILE, DEFAULT_UPDATES)
+            st.success("✅ v0.1~v0.4 기록이 완벽하게 복구되었습니다!")
+            st.rerun()
 
 updates = load_json(UPDATE_FILE, DEFAULT_UPDATES)
+
+# 불러온 데이터도 항상 버전을 기준으로 내림차순 정렬하여 보여줍니다.
+updates.sort(key=lambda x: x.get('version', ''), reverse=True)
+
 for i, u in enumerate(updates):
-    # 💡 [핵심] 수정 모드 활성화 시 수정 폼(Form) 출력
     if st.session_state.edit_index == i:
         with st.form(key=f"edit_form_{i}"):
             st.markdown("#### ✏️ 업데이트 기록 수정")
@@ -265,7 +278,6 @@ for i, u in enumerate(updates):
             e_title = st.text_input("제목", value=u.get('title', ''))
             e_desc  = st.text_area("설명", value=u.get('desc', ''), height=80)
             
-            # 과거 영어 태그가 섞여 있어도 폼에는 한글로 변환해서 세팅
             old_to_new = {"fix": "🔴 버그수정", "feature": "🟢 신기능", "improve": "🔵 개선", "mobile": "🟡 모바일"}
             default_tags = [old_to_new.get(t, t) for t in u.get("tags", []) if old_to_new.get(t, t) in TAG_MAP]
             
@@ -276,6 +288,8 @@ for i, u in enumerate(updates):
                 if st.form_submit_button("💾 변경사항 저장", use_container_width=True):
                     updates[i] = {"version": e_version.strip(), "date": e_date.strip(), 
                                   "title": e_title.strip(), "desc": e_desc.strip(), "tags": e_tags}
+                    # 💡 수정 후에도 다시 한번 버전 순 정렬!
+                    updates.sort(key=lambda x: x.get('version', ''), reverse=True)
                     save_json(UPDATE_FILE, updates)
                     st.session_state.edit_index = None
                     st.rerun()
@@ -284,7 +298,6 @@ for i, u in enumerate(updates):
                     st.session_state.edit_index = None
                     st.rerun()
     else:
-        # 수정 모드가 아닐 때는 기존 카드 형태로 출력
         tags_html = "".join(render_tag(t) for t in u.get("tags", []))
         st.markdown(f"""
         <div class="update-card">
@@ -296,7 +309,6 @@ for i, u in enumerate(updates):
         </div>""", unsafe_allow_html=True)
 
         if st.session_state.admin_ok:
-            # 수정 버튼과 삭제 버튼을 나란히 배치
             c1, c2, c3 = st.columns([1, 1, 8])
             with c1:
                 if st.button("✏️", key=f"edit_btn_{i}", help="수정"):
@@ -311,4 +323,3 @@ for i, u in enumerate(updates):
 
 st.markdown("---")
 st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")
-

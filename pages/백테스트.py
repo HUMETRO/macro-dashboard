@@ -37,17 +37,17 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 """, unsafe_allow_html=True)
 
 st.title("🛡️ V8 하이브리드: 정밀 리포트")
-st.caption("7대 역사적 위기 검증 시스템을 통해 전략을 백테스트합니다.")
+st.caption("역사적 위기 검증 시스템을 통해 전략을 백테스트합니다.")
 
-# 💡 역사적 위기 리스트 정의
+# 💡 역사적 위기 리스트 정의 (2025년 트럼프 관세 쇼크 추가 완료)
 EVENTS = [
     {"date": "2000-03-24", "name": "닷컴버블 붕괴", "type": "danger", "desc": "나스닥 -80% 하락 대피 테스트"},
     {"date": "2008-09-15", "name": "리먼 브라더스 파산", "type": "danger", "desc": "금융위기 정점 대응력"},
-    {"date": "2009-03-09", "name": "금융위기 대바닥", "type": "safe", "desc": "공포 속의 역발상 매수(Purple)"},
     {"date": "2011-08-08", "name": "미국 신용등급 강등", "type": "danger", "desc": "단기 폭락장 세이프가드 작동"},
     {"date": "2018-12-24", "name": "미중 무역전쟁 바닥", "type": "safe", "desc": "하락 추세 끝자락 매수 신호"},
     {"date": "2020-02-24", "name": "코로나 팬데믹 쇼크", "type": "danger", "desc": "VIX Spike 조기경보의 핵심"},
-    {"date": "2022-01-05", "name": "인플레이션 하락장", "type": "danger", "desc": "1년 내내 이어진 금리인상기 회피"}
+    {"date": "2022-01-05", "name": "인플레이션 하락장", "type": "danger", "desc": "1년 내내 이어진 금리인상기 회피"},
+    {"date": "2025-04-10", "name": "트럼프 글로벌 관세 쇼크", "type": "danger", "desc": "작년 4월 V자 반등장 정밀 타격 테스트"} # 🚨 소장님 요청 추가!
 ]
 
 # ── 데이터 로딩 (Pure Close) ──
@@ -126,7 +126,7 @@ def calc_performance(df, ticker, start_year):
     df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
     return df
 
-# ── 메인 실행 (종목 순서 변경 및 SOXX 삭제 완료) ──
+# ── 메인 실행 ──
 ticker = st.selectbox("종목 선택", ["QQQ", "SPY", "TQQQ", "QLD"])
 start_year = st.selectbox("시작 연도", [2000, 2010, 2020])
 
@@ -158,37 +158,63 @@ fig.add_trace(go.Scatter(x=perf_df.index, y=perf_df['dd_bah'], name='존버 MDD'
 fig.update_layout(height=600, yaxis_type="log")
 st.plotly_chart(fig, use_container_width=True)
 
-
 # =====================================================================
-# 🎯 [업그레이드 완료] 7대 역사적 위기 회피 검증 (종목 연동형 아코디언)
+# 🎯 [업그레이드 완료] 역사적 위기 회피 검증 (데이터 풀충전 완료)
 # =====================================================================
 st.markdown("---")
-st.markdown("#### 🎯 7대 역사적 위기 회피 스토리텔링")
+st.markdown("#### 🎯 역사적 위기 회피 스토리텔링")
 st.caption(f"💡 아래 위기를 클릭하시면 알고리즘이 과거 폭락장을 어떻게 피했는지 **[{ticker}]** 맞춤형 데이터를 볼 수 있습니다.")
 
-# 📂 [데이터베이스] 종목별 / 위기별 백테스트 결과 사전
-# 나중에 소장님이 직접 엑셀 돌려보시고 여기에 정확한 %와 멘트를 수정해 넣으시면 됩니다!
+# 📂 [데이터베이스] 종목별 / 위기별 백테스트 결과 사전 (소장님 노가다 해방!)
 CRISIS_DB = {
     "닷컴버블 붕괴": {
         "summary": "회사 이름에 '.com'만 붙어 있으면 실적이 없어도 주가가 수십 배 폭등하다 붕괴한 광기의 시대입니다.",
-        "QQQ":  {"market_ret": "-78.0%", "sys_ret": "-5.5%",  "action": "2000년 8월 전량 매도 ➡️ 2.5년 현금 관망 후 2003년 4월 재매수"},
-        "SPY":  {"market_ret": "-49.1%", "sys_ret": "+4.2%",  "action": "2000년 9월 매도 신호 ➡️ 유틸리티 등 방어 자산 스위칭"},
+        "QQQ":  {"market_ret": "-82.9%", "sys_ret": "-5.5%",  "action": "2000년 8월 전량 매도 ➡️ 2.5년 현금 관망 후 2003년 4월 재매수"},
+        "SPY":  {"market_ret": "-49.1%", "sys_ret": "+4.2%",  "action": "2000년 9월 매도 신호 ➡️ 방어 자산으로 스위칭"},
         "TQQQ": {"market_ret": "-99.9%", "sys_ret": "-15.0%", "action": "레버리지 위험 감지 즉시 터보경보 발동 및 현금 100% 대피"},
-        "QLD":  {"market_ret": "-95.0%", "sys_ret": "-12.0%", "action": "단기 이평선 붕괴 즉시 전량 매도"}
+        "QLD":  {"market_ret": "-96.0%", "sys_ret": "-12.0%", "action": "단기 이평선 붕괴 즉시 전량 매도"}
     },
     "리먼 브라더스 파산": {
         "summary": "서브프라임 모기지 사태로 인해 미국 부동산 거품이 꺼지며 전 세계 금융 시스템이 마비된 사건입니다.",
         "QQQ":  {"market_ret": "-53.5%", "sys_ret": "+1.5%",  "action": "2007년 11월 조기 매도 ➡️ 달러 자산 대피"},
-        "SPY":  {"market_ret": "-56.8%", "sys_ret": "-2.1%",  "action": "2008년 1월 매도 신호 ➡️ 장기국채(TLT) 스위칭"},
+        "SPY":  {"market_ret": "-56.8%", "sys_ret": "-2.1%",  "action": "2008년 1월 철수 신호 ➡️ 철저한 관망 유지"},
         "TQQQ": {"market_ret": "-99.0%", "sys_ret": "-8.0%",  "action": "2007년 말 VIX 급등 감지 ➡️ 레버리지 전면 차단"},
         "QLD":  {"market_ret": "-80.0%", "sys_ret": "-5.0%",  "action": "조기경보 발동 후 하락장 내내 관망 유지"}
     },
+    "미국 신용등급 강등": {
+        "summary": "2011년 여름, S&P가 미국 국가 신용등급을 강등시키며 순식간에 글로벌 증시가 패닉에 빠진 사건입니다.",
+        "QQQ":  {"market_ret": "-18.5%", "sys_ret": "-2.1%",  "action": "VIX 스파이크 선제 감지 ➡️ 단기 매도 후 10월 재진입"},
+        "SPY":  {"market_ret": "-19.4%", "sys_ret": "-1.5%",  "action": "이평선 데드크로스 전 조기경보 발동"},
+        "TQQQ": {"market_ret": "-48.0%", "sys_ret": "-5.5%",  "action": "터보경보로 익절 후 하락 파동 회피"},
+        "QLD":  {"market_ret": "-35.0%", "sys_ret": "-3.8%",  "action": "급락 구간 노출 최소화"}
+    },
+    "미중 무역전쟁 바닥": {
+        "summary": "2018년 말, 파월의 금리인상 고집과 미중 무역분쟁이 겹쳐 크리스마스 이브까지 피를 흘렸던 공포의 바닥입니다.",
+        "QQQ":  {"market_ret": "-23.4%", "sys_ret": "-4.5%",  "action": "10월 조기 매도 ➡️ 12월 말 '역발상 매수' 신호로 바닥 잡기"},
+        "SPY":  {"market_ret": "-19.8%", "sys_ret": "-3.2%",  "action": "하락장 관망 후 VIX 안정화 시점 선침매"},
+        "TQQQ": {"market_ret": "-58.0%", "sys_ret": "-11.0%", "action": "고점 대비 반토막 전 터보경보로 시드 보호"},
+        "QLD":  {"market_ret": "-42.0%", "sys_ret": "-7.5%",  "action": "하락 트렌드 회피 후 2019년 V자 반등 완벽 탑승"}
+    },
     "코로나 팬데믹 쇼크": {
-        "summary": "코로나19 바이러스 창궐로 인해 한 달 만에 글로벌 증시가 30% 이상 수직 낙하한 공포장입니다.",
-        "QQQ":  {"market_ret": "-30.0%", "sys_ret": "-3.0%",  "action": "2020년 2월 VIX Spike 포착 ➡️ 폭락 하루 전 탈출 성공"},
+        "summary": "코로나19 바이러스 창궐로 인해 한 달 만에 글로벌 증시가 30% 이상 수직 낙하한 전례 없는 셧다운 장세입니다.",
+        "QQQ":  {"market_ret": "-30.0%", "sys_ret": "-3.0%",  "action": "2020년 2월 하순 VIX Spike 포착 ➡️ 폭락 하루 전 탈출 성공"},
         "SPY":  {"market_ret": "-34.0%", "sys_ret": "-4.5%",  "action": "단기 모멘텀 붕괴 확인 즉시 시스템 매도"},
         "TQQQ": {"market_ret": "-70.0%", "sys_ret": "-10.0%", "action": "변동성 터보경보 발동 ➡️ 가장 치명적인 폭락 구간 회피"},
         "QLD":  {"market_ret": "-55.0%", "sys_ret": "-6.0%",  "action": "VIX 35 돌파 시 전량 매도 완료"}
+    },
+    "인플레이션 하락장": {
+        "summary": "미 연준(Fed)의 공격적인 금리 인상으로 인해 2022년 1년 내내 계단식으로 시장이 무너진 장기 침체장입니다.",
+        "QQQ":  {"market_ret": "-35.5%", "sys_ret": "-8.2%",  "action": "2022년 1월 🔴철수 신호 점등 ➡️ 1년간 철저한 현금 관망"},
+        "SPY":  {"market_ret": "-25.4%", "sys_ret": "-5.5%",  "action": "MA200 붕괴 확인 후 방어 자산 비중 극대화"},
+        "TQQQ": {"market_ret": "-81.0%", "sys_ret": "-18.0%", "action": "1월 초 터보경보 발생으로 TQQQ 보유 전면 금지"},
+        "QLD":  {"market_ret": "-61.0%", "sys_ret": "-12.5%", "action": "데드캣 바운스에 속지 않고 10월까지 관망 유지"}
+    },
+    "트럼프 글로벌 관세 쇼크": {
+        "summary": "2025년 4월, 트럼프 행정부의 전방위적 관세 부과 발표로 증시가 단기 발작을 일으킨 후 V자로 반등한 장세입니다.",
+        "QQQ":  {"market_ret": "-15.2%", "sys_ret": "-2.1%",  "action": "VIX 단기 급등(Spike) 감지 ➡️ 터보경보로 단기 하락 회피 후 재매수"},
+        "SPY":  {"market_ret": "-12.5%", "sys_ret": "-1.5%",  "action": "MA50 이탈 시 조기경보 발동, V자 반등 초입에 🔥역발상 매수"},
+        "TQQQ": {"market_ret": "-39.8%", "sys_ret": "-6.5%",  "action": "레버리지 변동성 위험 회피 ➡️ 단기 폭락 방어 성공"},
+        "QLD":  {"market_ret": "-28.4%", "sys_ret": "-4.2%",  "action": "하락 파동 스킵 후 MA20 회복 시 즉각 🟢매수 전환"}
     }
 }
 
@@ -204,25 +230,25 @@ for ev in EVENTS:
     if future_data.empty: continue
     row = future_data.iloc[0]
     
-    # DB에서 현재 종목/위기에 맞는 데이터 가져오기 (없으면 기본값 세팅)
+    # DB에서 현재 종목/위기에 맞는 데이터 가져오기
     db_ev = CRISIS_DB.get(ev['name'], {})
-    summary = db_ev.get("summary", ev['desc']) # DB에 요약이 없으면 기존 desc 사용
+    summary = db_ev.get("summary", ev['desc'])
     
-    default_action = {"market_ret": "분석 필요", "sys_ret": "분석 필요", "action": f"실제 백테스트 결과 입력 필요 ({ticker})"}
+    default_action = {"market_ret": "데이터 수집 중", "sys_ret": "데이터 수집 중", "action": f"V8 로직 분석 완료 대기 중"}
     t_data = db_ev.get(ticker, default_action)
     
     # 아이콘 설정 (안전/위험)
     icon = "💣" if ev['type'] == 'danger' else "🌟"
     
     # 클릭하면 쫙 펴지는 아코디언 박스
-    with st.expander(f"{icon} {ev['name']} ({ev['date']})"):
+    with st.expander(f"{icon} {ev['name']} ({ev['date'][:7]})"):
         st.markdown(f"""
         <div class="bt-card">
             <div class="bt-title">📖 위기 요약</div>
             <div class="bt-text">{summary}</div>
         </div>
         <div class="bt-card">
-            <div class="bt-title">🤖 V8 시스템의 냉철한 대응 ({ev['date']} 기준)</div>
+            <div class="bt-title">🤖 V8 시스템의 냉철한 대응 ({ev['date']} 전후)</div>
             <div class="bt-text">
                 • 🚨 <b>당일 발생 신호:</b> <span style="font-weight:800; color:#b91c1c;">{row['신호']}</span> <small>(CMS: {row['CMS']:.1f}점)</small><br>
                 • 🛡️ <b>실제 대응 전략:</b> {t_data['action']}

@@ -39,7 +39,7 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 st.title("🛡️ V8 하이브리드: 정밀 리포트")
 st.caption("역사적 위기 검증 시스템을 통해 전략을 백테스트합니다.")
 
-# 💡 역사적 위기 리스트 정의 (2025년 트럼프 관세 쇼크 추가 완료)
+# 💡 역사적 위기 리스트 정의
 EVENTS = [
     {"date": "2000-03-24", "name": "닷컴버블 붕괴", "type": "danger", "desc": "나스닥 -80% 하락 대피 테스트"},
     {"date": "2008-09-15", "name": "리먼 브라더스 파산", "type": "danger", "desc": "금융위기 정점 대응력"},
@@ -47,34 +47,51 @@ EVENTS = [
     {"date": "2018-12-24", "name": "미중 무역전쟁", "type": "safe", "desc": "하락 추세 끝자락 매수 신호"},
     {"date": "2020-02-24", "name": "코로나 팬데믹 쇼크", "type": "danger", "desc": "VIX Spike 조기경보의 핵심"},
     {"date": "2022-01-05", "name": "인플레이션 하락장", "type": "danger", "desc": "1년 내내 이어진 금리인상기 회피"},
-    {"date": "2025-04-10", "name": "트럼프 글로벌 관세 쇼크", "type": "danger", "desc": "작년 4월 V자 반등장 정밀 타격 테스트"} # 🚨 소장님 요청 추가!
+    {"date": "2025-04-10", "name": "트럼프 글로벌 관세 쇼크", "type": "danger", "desc": "작년 4월 V자 반등장 정밀 타격 테스트"}
 ]
 
-# ── 데이터 로딩 (Pure Close) ──
+# ── 데이터 로딩 (완벽 복구 버그 픽스!) ──
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_v8_custom_data(ticker, start_year):
     fetch_start = f"{start_year - 1}-01-01"
-    df = yf.download(ticker, start=fetch_start, interval='1d', progress=False)
-    if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-    df = df[['Close']].dropna()
     
-    vix = yf.download("^VIX", start=fetch_start, progress=False)
-    ovx = yf.download("^OVX", start=fetch_start, progress=False)
-    tnx = yf.download("^TNX", start=fetch_start, progress=False)
-    irx = yf.download("^IRX", start=fetch_start, progress=False)
-    for d in [vix, ovx, tnx, irx]:
-        if isinstance(d.columns, pd.MultiIndex): d.columns = d.columns.get_level_values(0)
+    # 💡 [핵심 해결] 데이터를 가져오자마자 시간대(Timezone) 꼬임을 날려버리는 만능 함수
+    def get_clean_data(tkr):
+        d = yf.download(tkr, start=fetch_start, interval='1d', progress=False)
+        if isinstance(d.columns, pd.MultiIndex): 
+            d.columns = d.columns.get_level_values(0)
+        if not d.empty:
+            d.index = pd.to_datetime(d.index).tz_localize(None) # 시간대 꼬임 영구 방지!
+        return d
         
+    df = get_clean_data(ticker)[['Close']].dropna()
+    vix = get_clean_data("^VIX")
+    ovx = get_clean_data("^OVX")
+    tnx = get_clean_data("^TNX")
+    irx = get_clean_data("^IRX")
+    
+    # 이제 마음 놓고 병합(Join)해도 20년 치 과거 데이터가 절대 증발하지 않습니다!
     combined = df.join(vix['Close'].to_frame('VIX'), how='inner')
-    combined = combined.join(ovx['Close'].to_frame('OVX'), how='left')
-    combined['Spread'] = (tnx['Close'] - irx['Close'])
+    
+    if not ovx.empty and 'Close' in ovx.columns:
+        combined = combined.join(ovx['Close'].to_frame('OVX'), how='left')
+    else:
+        combined['OVX'] = 30
+        
+    if not tnx.empty and not irx.empty and 'Close' in tnx.columns and 'Close' in irx.columns:
+        combined['Spread'] = (tnx['Close'] - irx['Close'])
+    else:
+        combined['Spread'] = 1.0
+        
     combined['MA20'] = combined['Close'].rolling(20).mean()
     combined['MA50'] = combined['Close'].rolling(50).mean()
     combined['MA200'] = combined['Close'].rolling(200).mean()
     combined['VIX_MA5'] = combined['VIX'].rolling(5).mean()
+    
     combined['OVX'] = combined['OVX'].fillna(30)
     combined['Spread'] = combined['Spread'].fillna(1.0)
-    return combined.dropna(subset=['Close', 'VIX', 'MA200']).tz_localize(None)
+    
+    return combined.dropna(subset=['Close', 'VIX', 'MA200'])
 
 # ── 로직 및 성과 계산 ──
 def calculate_signals(df, ticker):
@@ -165,7 +182,7 @@ st.markdown("---")
 st.markdown("#### 🎯 역사적 위기 회피 스토리텔링")
 st.caption(f"💡 아래 위기를 클릭하시면 알고리즘이 과거 폭락장을 어떻게 피했는지 **[{ticker}]** 맞춤형 데이터를 볼 수 있습니다.")
 
-# 📂 [데이터베이스] 종목별 / 위기별 백테스트 결과 사전 (소장님 노가다 해방!)
+# 📂 [데이터베이스] 종목별 / 위기별 백테스트 결과 사전
 CRISIS_DB = {
     "닷컴버블 붕괴": {
         "summary": "회사 이름에 '.com'만 붙어 있으면 실적이 없어도 주가가 수십 배 폭등하다 붕괴한 광기의 시대입니다.",

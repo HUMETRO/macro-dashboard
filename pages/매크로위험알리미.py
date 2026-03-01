@@ -177,10 +177,17 @@ with tab2:
     # 💡 [핵심 해결 로직] 표와 카드에 공통으로 아이콘을 박아넣습니다.
     df_display = df_individual.copy()
     
+    # 💡 [핵심 해결 로직] M7 등 개별종목 맞춤형 자산군 분류
     def add_asset_icon(tick):
-        if tick in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ']: return f"🟥 {tick}"
-        elif tick in ['SPY', 'QQQ', 'DIA', 'IWM', 'VOO', 'IVV', 'VT']: return f"🟩 {tick}"
-        else: return f"🟨 {tick}"
+        # 🟥 레버리지 및 고변동성
+        if tick in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ', 'NVDL', 'CONL']: 
+            return f"🟥 {tick}"
+        # 🟩 코어 우량주 (M7 및 주요 ETF)
+        elif tick in ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA', 'SPY', 'QQQ', 'DIA']: 
+            return f"🟩 {tick}"
+        # 🟨 위성 자산 (기타 개별주)
+        else: 
+            return f"🟨 {tick}"
         
     df_display['티커_아이콘'] = df_display['티커'].apply(add_asset_icon)
     
@@ -302,3 +309,4 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
+

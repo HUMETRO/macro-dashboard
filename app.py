@@ -179,7 +179,7 @@ with st.expander("🔐 관리자 로그인", expanded=False):
     if not st.session_state.admin_ok:
         pw = st.text_input("비밀번호", type="password", key="login_pw")
         if st.button("로그인", key="login_btn"):
-            if pw == "jeff1234":
+            if pw == "airbusan3060!":
                 st.session_state.admin_ok = True
                 st.rerun()
             else: st.error("비밀번호가 틀렸습니다.")
@@ -228,3 +228,4 @@ for i, u in enumerate(updates):
 
 st.markdown("---")
 st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")
+

@@ -7,30 +7,27 @@ import numpy as np
 
 st.markdown("""
 <style>
-    /* 전체 카드 컨테이너 */
+    /* 카드 공통 스타일 */
     .st-card {
         background: #ffffff;
         border-radius: 12px;
         padding: 18px;
         margin-bottom: 12px;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
-    /* 위험도별 왼쪽 테두리 포인트 */
-    .border-red { border-left: 8px solid #ef4444; }    /* 철수 */
-    .border-yellow { border-left: 8px solid #f59e0b; } /* 경보 */
-    .border-green { border-left: 8px solid #10b981; }  /* 매수 */
-    .border-purple { border-left: 8px solid #8b5cf6; } /* 역발상 */
+    
+    /* 🎨 신호별 테두리 및 글자색 설정 (흰색 배제) */
+    .border-buy { border-left: 10px solid #10b981; color: #064e3b; background: #ecfdf5; }    /* 매수신호: 진한 초록글씨 */
+    .border-wait { border-left: 10px solid #f59e0b; color: #78350f; background: #fffbeb; }   /* 관망: 진한 갈색글씨 */
+    .border-exit { border-left: 10px solid #ef4444; color: #7f1d1d; background: #fef2f2; }    /* 도망챠: 진한 빨간글씨 */
 
-    /* 카드 텍스트 디자인 */
-    .ticker-name { font-size: 1.15rem; font-weight: 800; color: #1e293b; }
-    .status-text { font-size: 0.85rem; font-weight: 600; margin-top: 4px; }
-    .score-box { text-align: right; }
-    .cms-val { font-size: 1.2rem; font-weight: 800; color: #334155; }
-    .sl-desc { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+    .ticker-label { font-size: 1.2rem; font-weight: 800; margin-bottom: 2px; }
+    .signal-text { font-size: 0.95rem; font-weight: 700; }
+    .score-val { font-size: 1.3rem; font-weight: 900; text-align: right; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -327,4 +324,5 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
+
 

@@ -5,6 +5,36 @@ import os
 import pandas as pd
 import numpy as np
 
+st.markdown("""
+<style>
+    /* 전체 카드 컨테이너 */
+    .st-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.04);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    /* 위험도별 왼쪽 테두리 포인트 */
+    .border-red { border-left: 8px solid #ef4444; }    /* 철수 */
+    .border-yellow { border-left: 8px solid #f59e0b; } /* 경보 */
+    .border-green { border-left: 8px solid #10b981; }  /* 매수 */
+    .border-purple { border-left: 8px solid #8b5cf6; } /* 역발상 */
+
+    /* 카드 텍스트 디자인 */
+    .ticker-name { font-size: 1.15rem; font-weight: 800; color: #1e293b; }
+    .status-text { font-size: 0.85rem; font-weight: 600; margin-top: 4px; }
+    .score-box { text-align: right; }
+    .cms-val { font-size: 1.2rem; font-weight: 800; color: #334155; }
+    .sl-desc { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+</style>
+""", unsafe_allow_html=True)
+
+
 # [1] 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -297,3 +327,4 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
+

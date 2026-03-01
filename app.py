@@ -65,11 +65,12 @@ BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 COMMENT_FILE = os.path.join(BASE_DIR, "comments.json")
 UPDATE_FILE  = os.path.join(BASE_DIR, "updates.json")
 
-TAG_CONFIG = {
-    "fix":      ("🔴 버그수정", "tag-fix"),
-    "feature": ("🟢 신기능",   "tag-feature"),
-    "improve": ("🔵 개선",      "tag-improve"),
-    "mobile":  ("🟡 모바일",    "tag-mobile"),
+# 💡 [핵심] 태그 한글화 매핑 딕셔너리
+TAG_MAP = {
+    "🔴 버그수정": "tag-fix",
+    "🟢 신기능": "tag-feature",
+    "🔵 개선": "tag-improve",
+    "🟡 모바일": "tag-mobile"
 }
 
 DEFAULT_UPDATES = [
@@ -78,7 +79,7 @@ DEFAULT_UPDATES = [
         "date": "2026-02-28",
         "title": "백테스트 페이지 신설 + 닷컴버블 검증 추가",
         "desc": "과거 경제 위기(닷컴버블, 리먼, 코로나 등) 백테스트 시스템 도입. VIX 및 장단기 금리차 필터 적용.",
-        "tags": ["feature", "improve"]
+        "tags": ["🟢 신기능", "🔵 개선"]
     }
 ]
 
@@ -96,6 +97,13 @@ def save_json(path, data):
             json.dump(data, f, ensure_ascii=False, indent=2)
         return True
     except: return False
+
+def render_tag(t):
+    # 예전에 저장된 영어 태그도 한글로 예쁘게 변환해주는 센스!
+    old_to_new = {"fix": "🔴 버그수정", "feature": "🟢 신기능", "improve": "🔵 개선", "mobile": "🟡 모바일"}
+    korean_tag = old_to_new.get(t, t)
+    css = TAG_MAP.get(korean_tag, "tag-improve") # 기본값 파란색
+    return f'<span class="tag {css}">{korean_tag}</span>'
 
 # ── [1] 히어로 ──────────────────────────────────
 st.markdown("""
@@ -123,9 +131,11 @@ if st.button("🔬 신호 백테스트 (역사 검증) →", use_container_width
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── 관리자 로그인 시스템 (댓글 삭제 권한 부여용) ──
+# ── 세션 상태 초기화 ──
 if "admin_ok" not in st.session_state:
     st.session_state.admin_ok = False
+if "edit_index" not in st.session_state:
+    st.session_state.edit_index = None
 
 # ── [3] 기능 안내 ────────────────────────────────
 with st.expander("🔍 주요 분석 기능 보기", expanded=False):
@@ -142,7 +152,6 @@ st.markdown("---")
 st.markdown("### 💬 방문자 의견 게시판")
 st.caption("시장 의견, 기능 제안, 자유로운 생각을 남겨주세요!")
 
-# 💡 댓글 입력 폼과 렌더링 로직 분리
 with st.form("comment_form", clear_on_submit=True):
     col_a, col_b = st.columns([1, 2])
     with col_a: nickname = st.text_input("닉네임", placeholder="익명 투자자", max_chars=15)
@@ -162,12 +171,11 @@ with st.form("comment_form", clear_on_submit=True):
                 st.success("✅ 등록되었습니다!")
                 st.rerun()
 
-# 💡 댓글 렌더링 및 관리자 삭제 기능 완벽 복구
 comments = load_json(COMMENT_FILE, [])
 if comments:
     st.markdown(f"**총 {len(comments)}개 의견**")
     for i, c in enumerate(comments):
-        col1, col2 = st.columns([9, 1]) # 열을 나누어 우측에 삭제 버튼 배치
+        col1, col2 = st.columns([9, 1])
         with col1:
             st.markdown(f"""
             <div class="comment-card">
@@ -175,7 +183,6 @@ if comments:
                 {c['text']}
             </div>""", unsafe_allow_html=True)
         with col2:
-            # 관리자(admin_ok)일 때만 삭제 버튼 렌더링
             if st.session_state.admin_ok:
                 if st.button("🗑️", key=f"del_comment_{i}", help="댓글 삭제"):
                     comments.pop(i)
@@ -192,7 +199,7 @@ with st.expander("🔐 관리자 로그인", expanded=False):
     if not st.session_state.admin_ok:
         pw = st.text_input("비밀번호", type="password", key="login_pw")
         if st.button("로그인", key="login_btn"):
-            if pw == "airbusan3060!": # 소장님 전용 비밀번호
+            if pw == "airbusan3060!": 
                 st.session_state.admin_ok = True
                 st.rerun()
             else: st.error("비밀번호가 틀렸습니다.")
@@ -200,6 +207,7 @@ with st.expander("🔐 관리자 로그인", expanded=False):
         st.success("✅ 관리자로 로그인 중입니다.")
         if st.button("로그아웃", key="logout_btn"):
             st.session_state.admin_ok = False
+            st.session_state.edit_index = None # 로그아웃 시 수정 창도 닫기
             st.rerun()
 
 if st.session_state.admin_ok:
@@ -210,7 +218,10 @@ if st.session_state.admin_ok:
             with c2: new_date    = st.text_input("날짜", value=datetime.now().strftime("%Y-%m-%d"))
             new_title = st.text_input("제목", placeholder="업데이트 제목")
             new_desc  = st.text_area("설명", placeholder="변경 내용을 입력하세요", height=80)
-            new_tags  = st.multiselect("태그", ["fix","feature","improve","mobile"])
+            
+            # 💡 [핵심] 한글 태그 선택
+            new_tags  = st.multiselect("태그", list(TAG_MAP.keys()))
+            
             if st.form_submit_button("📝 추가", use_container_width=True):
                 if not new_title.strip(): st.warning("제목을 입력해주세요!")
                 else:
@@ -223,21 +234,59 @@ if st.session_state.admin_ok:
 
 updates = load_json(UPDATE_FILE, DEFAULT_UPDATES)
 for i, u in enumerate(updates):
-    tags_html = "".join(f'<span class="tag {TAG_CONFIG.get(t,("","tag-improve"))[1]}">{TAG_CONFIG.get(t,(t,""))[0]}</span>' for t in u.get("tags", []))
-    st.markdown(f"""
-<div class="update-card">
-    <div class="update-version">{u['version']}</div>
-    <div class="update-date">📅 {u['date']}</div>
-    <div class="update-title">🔧 {u['title']}</div>
-    <div class="update-desc">{u['desc']}</div>
-    <div style="margin-top:6px;">{tags_html}</div>
-</div>""", unsafe_allow_html=True)
+    # 💡 [핵심] 수정 모드 활성화 시 수정 폼(Form) 출력
+    if st.session_state.edit_index == i:
+        with st.form(key=f"edit_form_{i}"):
+            st.markdown("#### ✏️ 업데이트 기록 수정")
+            c1, c2 = st.columns([1, 1])
+            with c1: e_version = st.text_input("버전", value=u.get('version', ''))
+            with c2: e_date    = st.text_input("날짜", value=u.get('date', ''))
+            e_title = st.text_input("제목", value=u.get('title', ''))
+            e_desc  = st.text_area("설명", value=u.get('desc', ''), height=80)
+            
+            # 과거 영어 태그가 섞여 있어도 폼에는 한글로 변환해서 세팅
+            old_to_new = {"fix": "🔴 버그수정", "feature": "🟢 신기능", "improve": "🔵 개선", "mobile": "🟡 모바일"}
+            default_tags = [old_to_new.get(t, t) for t in u.get("tags", []) if old_to_new.get(t, t) in TAG_MAP]
+            
+            e_tags  = st.multiselect("태그", list(TAG_MAP.keys()), default=default_tags)
+            
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                if st.form_submit_button("💾 변경사항 저장", use_container_width=True):
+                    updates[i] = {"version": e_version.strip(), "date": e_date.strip(), 
+                                  "title": e_title.strip(), "desc": e_desc.strip(), "tags": e_tags}
+                    save_json(UPDATE_FILE, updates)
+                    st.session_state.edit_index = None
+                    st.rerun()
+            with col_cancel:
+                if st.form_submit_button("❌ 취소", use_container_width=True):
+                    st.session_state.edit_index = None
+                    st.rerun()
+    else:
+        # 수정 모드가 아닐 때는 기존 카드 형태로 출력
+        tags_html = "".join(render_tag(t) for t in u.get("tags", []))
+        st.markdown(f"""
+        <div class="update-card">
+            <div class="update-version">{u['version']}</div>
+            <div class="update-date">📅 {u['date']}</div>
+            <div class="update-title">🔧 {u['title']}</div>
+            <div class="update-desc">{u['desc']}</div>
+            <div style="margin-top:6px;">{tags_html}</div>
+        </div>""", unsafe_allow_html=True)
 
-    if st.session_state.admin_ok:
-        if st.button("🗑️ 삭제", key=f"del_update_{i}"):
-            updates.pop(i)
-            save_json(UPDATE_FILE, updates)
-            st.rerun()
+        if st.session_state.admin_ok:
+            # 수정 버튼과 삭제 버튼을 나란히 배치
+            c1, c2, c3 = st.columns([1, 1, 8])
+            with c1:
+                if st.button("✏️", key=f"edit_btn_{i}", help="수정"):
+                    st.session_state.edit_index = i
+                    st.rerun()
+            with c2:
+                if st.button("🗑️", key=f"del_update_{i}", help="삭제"):
+                    updates.pop(i)
+                    save_json(UPDATE_FILE, updates)
+                    st.session_state.edit_index = None
+                    st.rerun()
 
 st.markdown("---")
 st.caption("📊 JEFF의 퀀트 매크로 연구소 · 데이터 기반 냉철한 투자")

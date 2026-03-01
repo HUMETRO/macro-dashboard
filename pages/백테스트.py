@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="V8 최종 커스텀 리포트", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="커스텀 리포트", page_icon="🛡️", layout="wide")
 
 # ── 스타일 설정 ──
 st.markdown("""
@@ -36,7 +36,7 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛡️ V8 하이브리드: 정밀 리포트")
+st.title("🛡️ 하이브리드: 정밀 리포트")
 st.caption("역사적 위기 검증 시스템을 통해 전략을 백테스트합니다.")
 
 # ── 데이터 로딩 (완벽 복구 버그 픽스!) ──

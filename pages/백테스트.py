@@ -83,45 +83,44 @@ def load_v8_custom_data(ticker, start_year):
     return combined.dropna(subset=['Close', 'VIX', 'MA200'])
 
 # ── 로직 및 성과 계산 ──
-
 def calculate_signals(df, ticker):
-
     df = df.copy()
-
     is_lev = ticker in ["TQQQ", "QLD"]
-
+    
+    # 💡 [에러 방어] 만약 데이터가 비어있다면 에러 없이 빈 칸 반환
+    if df.empty:
+        df['신호'] = pd.Series(dtype='object')
+        df['CMS'] = pd.Series(dtype='float64')
+        return df
+        
     def get_status(row):
-
         c, m20, m50, m200, v, v5, o, s = row['Close'], row['MA20'], row['MA50'], row['MA200'], row['VIX'], row['VIX_MA5'], row['OVX'], row['Spread']
-
+        
         mult = 2.0 if c < m50 else 1.0
-
         pen = ((1.0 * max(0, v - 25)) + (1.2 * max(0, o - 35)) + (20 if s < -0.5 else 0)) * mult
-
         cms = 100 - pen
-
         v_spike = v / v5 > 1.25 if v5 > 0 else False
 
-        if c < m200 and cms < 50: return '🔴철수(Red)', cms
+        # 🚨 1순위: 200일선 붕괴 & 공포 극대화 (가장 먼저 현금 대피)
+        if c < m200 and cms < 40: 
+            return '🔴철수(Red)', cms
 
+        # 🔥 2순위: 역발상 매수 (순서를 끌어올림!)
+        if c < (m200 * 0.90) and cms >= 40: 
+            return '🔥역발상매수', cms
+
+        # ⚠️ 3순위: 일반적인 하락 트렌드 경보
         if is_lev:
-
             if c < m20 or v_spike: return '⚠️터보경보(Turbo)', cms
-
         else:
-
             if c < m50 or v_spike: return '🟡조기경보(Yellow)', cms
 
+        # 🟢 4순위: 평화로운 상승장 및 관망
         if cms >= 55: return '🟢매수(Green)', cms
-
-        if c < (m200 * 0.90): return '🔥역발상매수', cms
-
         return '🟡관망(Yellow)', cms
 
-    res = df.apply(get_status, axis=1, result_type='expand')
-
-    df['신호'], df['CMS'] = res[0], res[1]
-
+    # 💡 [핵심 해결] KeyError를 원천 차단하는 가장 안전한 열(Column) 할당 방식
+    df[['신호', 'CMS']] = df.apply(get_status, axis=1, result_type='expand')
     return df
     
 def calc_performance(df, ticker, start_year):

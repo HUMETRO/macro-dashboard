@@ -88,18 +88,31 @@ def calculate_signals(df, ticker):
     is_lev = ticker in ["TQQQ", "QLD"]
     def get_status(row):
         c, m20, m50, m200, v, v5, o, s = row['Close'], row['MA20'], row['MA50'], row['MA200'], row['VIX'], row['VIX_MA5'], row['OVX'], row['Spread']
+        
         mult = 2.0 if c < m50 else 1.0
         pen = ((1.0 * max(0, v - 25)) + (1.2 * max(0, o - 35)) + (20 if s < -0.5 else 0)) * mult
         cms = 100 - pen
         v_spike = v / v5 > 1.25 if v5 > 0 else False
-        if c < m200 and cms < 50: return '🔴철수(Red)', cms
+
+        # 🚨 1순위: 200일선 붕괴 & 공포 극대화 (가장 먼저 현금 대피)
+        if c < m200 and cms < 40: 
+            return '🔴철수(Red)', cms
+
+        # 🔥 2순위: 역발상 매수 (순서를 끌어올림!)
+        # 주가가 200일선 대비 -10% 폭락했지만, 시장 공포(CMS)가 극단적이진 않을 때 줍줍
+        if c < (m200 * 0.90) and cms >= 40: 
+            return '🔥역발상매수', cms
+
+        # ⚠️ 3순위: 일반적인 하락 트렌드 경보
         if is_lev:
             if c < m20 or v_spike: return '⚠️터보경보(Turbo)', cms
         else:
             if c < m50 or v_spike: return '🟡조기경보(Yellow)', cms
+
+        # 🟢 4순위: 평화로운 상승장 및 관망
         if cms >= 55: return '🟢매수(Green)', cms
-        if c < (m200 * 0.90): return '🔥역발상매수', cms
         return '🟡관망(Yellow)', cms
+
     res = df.apply(get_status, axis=1, result_type='expand')
     df['신호'], df['CMS'] = res[0], res[1]
     return df

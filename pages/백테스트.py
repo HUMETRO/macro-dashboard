@@ -132,7 +132,7 @@ def calc_performance(df, ticker, start_year):
     df['daily_ret'] = df['Close'].pct_change().fillna(0).clip(-0.99, 5.0)
     is_lev = ticker in ["TQQQ", "QLD"]
     
-    # 💡 [SGOV 복사기 탑재] 현금 파킹 시 연 4.5% 이자를 매일매일 물어옵니다!
+    # 💡 [SGOV 복사기] 현금 파킹 시 연 4.5% 무위험 이자
     sgov_daily_yield = 0.045 / 252 
 
     def get_exp(sig):
@@ -151,18 +151,19 @@ def calc_performance(df, ticker, start_year):
         exp = df['base_exp'].iloc[i]
         d_ret = df['daily_ret'].iloc[i]
         
-        # 💡 [치명적 버그 완벽 수정] 비중이 바뀐 '차액'에 대해서만 수수료를 부과합니다!
+        # 💡 [진실의 거울] 실전 미국 ETF 슬리피지(0.05%)만 부과!
+        # 비중이 바뀐 '차액'에 대해서만 아주 정밀하게 차감합니다.
         if i > 0:
             prev_exp = df['base_exp'].iloc[i-1]
-            cost = abs(exp - prev_exp) * 0.002
+            cost = abs(exp - prev_exp) * 0.0005 
         else:
             cost = 0
             
         actual_exp = exp 
-        
         cash_weight = 1.0 - actual_exp
         actual_sgov_ret = cash_weight * sgov_daily_yield
         
+        # 주식 수익 + SGOV 이자 - 실전 수수료
         cur_cum *= (1 + (d_ret * actual_exp) + actual_sgov_ret - cost)
         if cur_cum > max_cum: max_cum = cur_cum
         
@@ -174,54 +175,6 @@ def calc_performance(df, ticker, start_year):
     df['dd_strat'] = (df['cum_strat'] / df['cum_strat'].cummax() - 1) * 100
     df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
     return df
-    
-def calc_performance(df, ticker, start_year):
-    df = df[df.index >= f"{start_year}-01-01"].copy()
-    df['daily_ret'] = df['Close'].pct_change().fillna(0).clip(-0.99, 5.0)
-    is_lev = ticker in ["TQQQ", "QLD"]
-    
-    # 💡 [SGOV 복사기 탑재] 현금 파킹 시 연 4.5% 이자를 매일매일 물어옵니다!
-    sgov_daily_yield = 0.045 / 252 
-
-    def get_exp(sig):
-        if sig == '🟢매수(Green)': return 1.0
-        if sig == '⚠️터보경보(Turbo)': return 0.2 if is_lev else 0.4
-        if sig == '🟡조기경보(Yellow)': return 0.4
-        if sig == '🟡관망(Yellow)': return 0.7
-        if sig == '🔥역발상매수': return 0.8
-        return 0.0
-        
-    df['base_exp'] = df['신호'].apply(get_exp).shift(1).fillna(0)
-    
-    # 누적 수익률을 정확히 담을 리스트 세팅
-    final_exp, cum_strat_list, cur_cum, max_cum = [], [], 1.0, 1.0
-    
-    for i in range(len(df)):
-        exp = df['base_exp'].iloc[i]
-        d_ret = df['daily_ret'].iloc[i]
-        cost = 0.002 if i > 0 and exp != df['base_exp'].iloc[i-1] else 0
-        
-        # 🛡️ [숨겨진 브레이크 제거] dd < -0.08 일 때 강제로 비중 깎던 악성 코드 영구 삭제!
-        actual_exp = exp 
-        
-        # 주식 안 산 비중(현금)은 SGOV 무위험 이자 수익으로 변신
-        cash_weight = 1.0 - actual_exp
-        actual_sgov_ret = cash_weight * sgov_daily_yield
-        
-        # 주식 수익 + SGOV 이자 - 거래 수수료 (100% 팩트 복리 연산)
-        cur_cum *= (1 + (d_ret * actual_exp) + actual_sgov_ret - cost)
-        if cur_cum > max_cum: max_cum = cur_cum
-        
-        final_exp.append(actual_exp)
-        cum_strat_list.append(cur_cum)  
-        
-    # 벡터 덮어쓰기 오류 수정: 반복문에서 정확히 계산한 값을 그대로 대입
-    df['cum_strat'] = cum_strat_list
-    df['cum_bah'] = (1 + df['daily_ret']).cumprod()
-    df['dd_strat'] = (df['cum_strat'] / df['cum_strat'].cummax() - 1) * 100
-    df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
-    return df
-
 # ── 메인 실행 ──
 ticker = st.selectbox("종목 선택", ["QQQ", "SPY", "TQQQ", "QLD"])
 start_year = st.selectbox("시작 연도", [2000, 2010, 2020])

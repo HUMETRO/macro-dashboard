@@ -106,17 +106,15 @@ def calculate_signals(df, ticker):
         if c < m200 and cms < 40: 
             return '🔴철수(Red)', cms
 
-        # 🔥 2순위: 찐바닥 V자 반등 포착! (떨어지는 칼날은 피하고, 고개를 들 때 줍는다)
+        # 🔥 2순위: 찐바닥 V자 반등 포착! 
         if c < oversold_target and c > m20 and cms >= 40: 
             return '🔥역발상매수', cms
 
-        # 🛡️ 3순위: 떨어지는 칼날 완벽 방어 (추세 붕괴 시 무조건 비중 축소)
-        if is_lev and c < m20:
-            return '⚠️터보경보(Turbo)', cms
-        if not is_lev and c < m50:
-            return '🟡조기경보(Yellow)', cms
+        # 🛡️ 3순위: 떨어지는 칼날 방어 (💡효율화 아이디어: 잦은 휩쏘를 막기 위해 TQQQ도 50일선으로 완화!)
+        if c < m50:
+            return '⚠️터보경보(Turbo)' if is_lev else '🟡조기경보(Yellow)', cms
 
-        # ⚠️ 4순위: 평상시의 VIX 발작 경보 (바닥 구간이 아닐 때만 작동)
+        # ⚠️ 4순위: 평상시의 VIX 발작 경보
         if v_spike:
             return '⚠️터보경보(Turbo)' if is_lev else '🟡조기경보(Yellow)', cms
 
@@ -132,7 +130,7 @@ def calc_performance(df, ticker, start_year):
     df['daily_ret'] = df['Close'].pct_change().fillna(0).clip(-0.99, 5.0)
     is_lev = ticker in ["TQQQ", "QLD"]
     
-    # 💡 [SGOV 복사기] 현금 파킹 시 연 4.5% 무위험 이자
+    # 💡 [SGOV 복사기] 현금 파킹 시 연 4.5% 이자
     sgov_daily_yield = 0.045 / 252 
 
     def get_exp(sig):
@@ -151,8 +149,8 @@ def calc_performance(df, ticker, start_year):
         exp = df['base_exp'].iloc[i]
         d_ret = df['daily_ret'].iloc[i]
         
-        # 💡 [진실의 거울] 실전 미국 ETF 슬리피지(0.05%)만 부과!
-        # 비중이 바뀐 '차액'에 대해서만 아주 정밀하게 차감합니다.
+        # 💡 [진실의 거울] 실전 미국 ETF 환경에 맞춰 0.05%(0.0005) 슬리피지만 부과!
+        # (만약 예전의 '가짜 수익률'을 보고 싶으시면 이 숫자를 0으로 바꿔보십시오)
         if i > 0:
             prev_exp = df['base_exp'].iloc[i-1]
             cost = abs(exp - prev_exp) * 0.0005 
@@ -160,10 +158,10 @@ def calc_performance(df, ticker, start_year):
             cost = 0
             
         actual_exp = exp 
+        
         cash_weight = 1.0 - actual_exp
         actual_sgov_ret = cash_weight * sgov_daily_yield
         
-        # 주식 수익 + SGOV 이자 - 실전 수수료
         cur_cum *= (1 + (d_ret * actual_exp) + actual_sgov_ret - cost)
         if cur_cum > max_cum: max_cum = cur_cum
         

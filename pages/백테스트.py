@@ -83,6 +83,7 @@ def load_v8_custom_data(ticker, start_year):
     return combined.dropna(subset=['Close', 'VIX', 'MA200'])
 
 # ── 로직 및 성과 계산 ──
+# ── 로직 및 성과 계산 ──
 def calculate_signals(df, ticker):
     df = df.copy()
     is_lev = ticker in ["TQQQ", "QLD"]
@@ -106,18 +107,22 @@ def calculate_signals(df, ticker):
         if c < m200 and cms < 40: 
             return '🔴철수(Red)', cms
 
-        # 🛡️ 2순위: 제자님의 천재적인 '떨어지는 칼날 완벽 방어막' 부활!
-        # (단기 추세선인 20일/50일선 아래에서는 절대 바닥 매수를 하지 않음!)
-        if is_lev:
-            if c < m20 or v_spike: return '⚠️터보경보(Turbo)', cms
-        else:
-            if c < m50 or v_spike: return '🟡조기경보(Yellow)', cms
+        # 🛡️ 2순위: 떨어지는 칼날 완벽 방어 (추세 붕괴 시 무조건 비중 축소)
+        if is_lev and c < m20:
+            return '⚠️터보경보(Turbo)', cms
+        if not is_lev and c < m50:
+            return '🟡조기경보(Yellow)', cms
 
-        # 🔥 3순위: 방어막이 해제(단기 반등 성공)된 직후의 '안전한 V자 반등 줍줍'
+        # 🔥 3순위: 안전한 V자 반등 줍줍 (단기 추세를 회복했을 때!)
+        # 수수료 갈갉 버그를 막기 위해, 바닥 반등 시에는 v_spike 발작을 무시하고 수익을 꽉 잡습니다.
         if c < oversold_target and cms >= 40: 
             return '🔥역발상매수', cms
 
-        # 🟢 4순위: 평화로운 상승장
+        # ⚠️ 4순위: 평상시의 VIX 발작 경보 (바닥 구간이 아닐 때만 작동)
+        if v_spike:
+            return '⚠️터보경보(Turbo)' if is_lev else '🟡조기경보(Yellow)', cms
+
+        # 🟢 5순위: 평화로운 상승장
         if cms >= 55: return '🟢매수(Green)', cms
         return '🟡관망(Yellow)', cms
 

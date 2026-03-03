@@ -100,25 +100,24 @@ def calculate_signals(df, ticker):
         cms = 100 - pen
         v_spike = v / v5 > 1.25 if v5 > 0 else False
 
-        # 💡 [핵심 튜닝] 종목의 무거움에 맞춘 '맞춤형 역발상 그물망'
-        # 레버리지는 -15% 폭락 시 줍고, SPY/QQQ는 -5%만 빠져도 줍도록 세팅!
         oversold_target = (m200 * 0.85) if is_lev else (m200 * 0.95)
 
-        # 1순위: 200일선 붕괴 & 공포 극대화 (SGOV로 전액 대피)
+        # 🚨 1순위: 대폭락장 런 (SGOV 이자 파킹)
         if c < m200 and cms < 40: 
             return '🔴철수(Red)', cms
 
-        # 2순위: 맞춤형 역발상 매수
-        if c < oversold_target and cms >= 40: 
-            return '🔥역발상매수', cms
-
-        # 3순위: 트렌드 경보
+        # 🛡️ 2순위: 제자님의 천재적인 '떨어지는 칼날 완벽 방어막' 부활!
+        # (단기 추세선인 20일/50일선 아래에서는 절대 바닥 매수를 하지 않음!)
         if is_lev:
             if c < m20 or v_spike: return '⚠️터보경보(Turbo)', cms
         else:
             if c < m50 or v_spike: return '🟡조기경보(Yellow)', cms
 
-        # 4순위: 평화로운 상승장
+        # 🔥 3순위: 방어막이 해제(단기 반등 성공)된 직후의 '안전한 V자 반등 줍줍'
+        if c < oversold_target and cms >= 40: 
+            return '🔥역발상매수', cms
+
+        # 🟢 4순위: 평화로운 상승장
         if cms >= 55: return '🟢매수(Green)', cms
         return '🟡관망(Yellow)', cms
 

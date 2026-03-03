@@ -96,11 +96,9 @@ def get_macro_weather():
     pen_vix = max(0, today['^VIX'] - 25) * 1.0
     pen_ovx = max(0, today['^OVX'] - 35) * 1.2
     pen_spread = 20 if today['Spread'] < -0.5 else 0
-    
-    # 🚨 [스마트머니 신규 경보]
-    pen_hyg = 20 if today['HYG'] < today['HYG_MA50'] else 0  # 신용경색
-    pen_dxy = 15 if today['DX-Y.NYB'] > (today['DXY_MA20'] * 1.02) else 0  # 달러 급등
-    pen_ratio = 15 if today['XLY_XLP_Ratio'] < today['Ratio_MA50'] else 0  # 필수소비재 쏠림
+    pen_hyg = 20 if today['HYG'] < today['HYG_MA50'] else 0  
+    pen_dxy = 15 if today['DX-Y.NYB'] > (today['DXY_MA20'] * 1.02) else 0  
+    pen_ratio = 15 if today['XLY_XLP_Ratio'] < today['Ratio_MA50'] else 0  
 
     score = 100 - (pen_vix + pen_ovx + pen_spread + pen_hyg + pen_dxy + pen_ratio)
     score = max(0, min(100, score)) # 0~100점 사이 고정
@@ -110,11 +108,14 @@ def get_macro_weather():
     elif score >= 50: weather, emoji, color = "흐림 (비중 조절 및 관망)", "🌤️", "#f59e0b"
     else: weather, emoji, color = "태풍 경보 (현금/SGOV 대피 권장!)", "⛈️", "#ef4444"
 
+    # 💡 [핵심 수술] 6개 지표 모두 "수치"와 "상태(색상)"를 통일감 있게 정리합니다!
     details = {
-        "VIX": today['^VIX'], "OVX": today['^OVX'], "Spread": today['Spread'],
-        "HYG_Status": "위험" if pen_hyg > 0 else "안전",
-        "DXY_Status": "위험" if pen_dxy > 0 else "안전",
-        "Ratio_Status": "방어적" if pen_ratio > 0 else "공격적"
+        "VIX": {"val": f"{today['^VIX']:.1f}", "stat": "위험" if pen_vix > 0 else "안전", "col": "#ef4444" if pen_vix > 0 else "#10b981"},
+        "OVX": {"val": f"{today['^OVX']:.1f}", "stat": "위험" if pen_ovx > 0 else "안전", "col": "#ef4444" if pen_ovx > 0 else "#10b981"},
+        "Spread": {"val": f"{today['Spread']:.2f}%", "stat": "위험" if pen_spread > 0 else "안전", "col": "#ef4444" if pen_spread > 0 else "#10b981"},
+        "HYG": {"val": f"${today['HYG']:.2f}", "stat": "위험" if pen_hyg > 0 else "안전", "col": "#ef4444" if pen_hyg > 0 else "#10b981"},
+        "DXY": {"val": f"{today['DX-Y.NYB']:.2f}", "stat": "위험" if pen_dxy > 0 else "안전", "col": "#ef4444" if pen_dxy > 0 else "#10b981"},
+        "Ratio": {"val": f"{today['XLY_XLP_Ratio']:.3f}", "stat": "방어적" if pen_ratio > 0 else "공격적", "col": "#f59e0b" if pen_ratio > 0 else "#10b981"}
     }
     return score, weather, emoji, color, details
 
@@ -126,13 +127,13 @@ if macro_data:
     <div class="macro-card">
         <h3 style="margin-top:0; color:white;">🌍 글로벌 매크로 기상청 (탑다운 레이더)</h3>
         <h1 style="color:{color}; font-size:2.5rem; margin:10px 0;">{emoji} {score:.0f}점 : {weather}</h1>
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:15px; border-top:1px solid rgba(255,255,255,0.2); padding-top:15px;">
-            <div style="margin-right:15px;"><b>VIX(공포):</b> {details['VIX']:.1f}</div>
-            <div style="margin-right:15px;"><b>OVX(원유):</b> {details['OVX']:.1f}</div>
-            <div style="margin-right:15px;"><b>장단기 금리차:</b> {details['Spread']:.2f}%</div>
-            <div style="margin-right:15px;"><b>HYG(정크본드):</b> <span style="color:{'#ef4444' if details['HYG_Status']=='위험' else '#10b981'}">{details['HYG_Status']}</span></div>
-            <div style="margin-right:15px;"><b>달러(유동성):</b> <span style="color:{'#ef4444' if details['DXY_Status']=='위험' else '#10b981'}">{details['DXY_Status']}</span></div>
-            <div><b>스마트머니 흐름:</b> <span style="color:{'#f59e0b' if details['Ratio_Status']=='방어적' else '#10b981'}">{details['Ratio_Status']}</span></div>
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:15px; border-top:1px solid rgba(255,255,255,0.2); padding-top:15px; line-height:1.8;">
+            <div style="margin-right:15px;"><b>VIX(공포):</b> {details['VIX']['val']} <span style="color:{details['VIX']['col']}; font-weight:bold;">[{details['VIX']['stat']}]</span></div>
+            <div style="margin-right:15px;"><b>OVX(원유):</b> {details['OVX']['val']} <span style="color:{details['OVX']['col']}; font-weight:bold;">[{details['OVX']['stat']}]</span></div>
+            <div style="margin-right:15px;"><b>금리차:</b> {details['Spread']['val']} <span style="color:{details['Spread']['col']}; font-weight:bold;">[{details['Spread']['stat']}]</span></div>
+            <div style="margin-right:15px;"><b>HYG(정크):</b> {details['HYG']['val']} <span style="color:{details['HYG']['col']}; font-weight:bold;">[{details['HYG']['stat']}]</span></div>
+            <div style="margin-right:15px;"><b>달러(유동성):</b> {details['DXY']['val']} <span style="color:{details['DXY']['col']}; font-weight:bold;">[{details['DXY']['stat']}]</span></div>
+            <div><b>스마트머니:</b> {details['Ratio']['val']} <span style="color:{details['Ratio']['col']}; font-weight:bold;">[{details['Ratio']['stat']}]</span></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -386,3 +387,4 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
+

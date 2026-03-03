@@ -83,7 +83,6 @@ def load_v8_custom_data(ticker, start_year):
     return combined.dropna(subset=['Close', 'VIX', 'MA200'])
 
 # ── 로직 및 성과 계산 ──
-# ── 로직 및 성과 계산 ──
 def calculate_signals(df, ticker):
     df = df.copy()
     is_lev = ticker in ["TQQQ", "QLD"]
@@ -107,16 +106,15 @@ def calculate_signals(df, ticker):
         if c < m200 and cms < 40: 
             return '🔴철수(Red)', cms
 
-        # 🛡️ 2순위: 떨어지는 칼날 완벽 방어 (추세 붕괴 시 무조건 비중 축소)
+        # 🔥 2순위: 찐바닥 V자 반등 포착! (떨어지는 칼날은 피하고, 고개를 들 때 줍는다)
+        if c < oversold_target and c > m20 and cms >= 40: 
+            return '🔥역발상매수', cms
+
+        # 🛡️ 3순위: 떨어지는 칼날 완벽 방어 (추세 붕괴 시 무조건 비중 축소)
         if is_lev and c < m20:
             return '⚠️터보경보(Turbo)', cms
         if not is_lev and c < m50:
             return '🟡조기경보(Yellow)', cms
-
-        # 🔥 3순위: 안전한 V자 반등 줍줍 (단기 추세를 회복했을 때!)
-        # 수수료 갈갉 버그를 막기 위해, 바닥 반등 시에는 v_spike 발작을 무시하고 수익을 꽉 잡습니다.
-        if c < oversold_target and cms >= 40: 
-            return '🔥역발상매수', cms
 
         # ⚠️ 4순위: 평상시의 VIX 발작 경보 (바닥 구간이 아닐 때만 작동)
         if v_spike:
@@ -127,6 +125,54 @@ def calculate_signals(df, ticker):
         return '🟡관망(Yellow)', cms
 
     df[['신호', 'CMS']] = df.apply(get_status, axis=1, result_type='expand')
+    return df
+    
+def calc_performance(df, ticker, start_year):
+    df = df[df.index >= f"{start_year}-01-01"].copy()
+    df['daily_ret'] = df['Close'].pct_change().fillna(0).clip(-0.99, 5.0)
+    is_lev = ticker in ["TQQQ", "QLD"]
+    
+    # 💡 [SGOV 복사기 탑재] 현금 파킹 시 연 4.5% 이자를 매일매일 물어옵니다!
+    sgov_daily_yield = 0.045 / 252 
+
+    def get_exp(sig):
+        if sig == '🟢매수(Green)': return 1.0
+        if sig == '⚠️터보경보(Turbo)': return 0.2 if is_lev else 0.4
+        if sig == '🟡조기경보(Yellow)': return 0.4
+        if sig == '🟡관망(Yellow)': return 0.7
+        if sig == '🔥역발상매수': return 0.8
+        return 0.0
+        
+    df['base_exp'] = df['신호'].apply(get_exp).shift(1).fillna(0)
+    
+    final_exp, cum_strat_list, cur_cum, max_cum = [], [], 1.0, 1.0
+    
+    for i in range(len(df)):
+        exp = df['base_exp'].iloc[i]
+        d_ret = df['daily_ret'].iloc[i]
+        
+        # 💡 [치명적 버그 완벽 수정] 비중이 바뀐 '차액'에 대해서만 수수료를 부과합니다!
+        if i > 0:
+            prev_exp = df['base_exp'].iloc[i-1]
+            cost = abs(exp - prev_exp) * 0.002
+        else:
+            cost = 0
+            
+        actual_exp = exp 
+        
+        cash_weight = 1.0 - actual_exp
+        actual_sgov_ret = cash_weight * sgov_daily_yield
+        
+        cur_cum *= (1 + (d_ret * actual_exp) + actual_sgov_ret - cost)
+        if cur_cum > max_cum: max_cum = cur_cum
+        
+        final_exp.append(actual_exp)
+        cum_strat_list.append(cur_cum)  
+        
+    df['cum_strat'] = cum_strat_list
+    df['cum_bah'] = (1 + df['daily_ret']).cumprod()
+    df['dd_strat'] = (df['cum_strat'] / df['cum_strat'].cummax() - 1) * 100
+    df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
     return df
     
 def calc_performance(df, ticker, start_year):

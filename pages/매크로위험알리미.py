@@ -152,7 +152,7 @@ with st.spinner("⏳ 바텀업 데이터를 분석 중입니다..."):
     df_individual = calculate_individual_metrics(all_data['individual_stocks'])
     df_core       = calculate_core_sector_scores(all_data['core_sectors'])
 
-# [4] 메인 시장 상태 지표
+# [4] 메인 시장 상태 지표 (데드존 장착 완료!)
 st.subheader("🏢 시장 체력 스캐너 (바텀업 레이더)")
 if not df_sectors.empty and 'L-score' in df_sectors.columns:
     col1, col2, col3 = st.columns(3)
@@ -161,10 +161,11 @@ if not df_sectors.empty and 'L-score' in df_sectors.columns:
     with col1: st.metric("평균 L-score", f"{avg_l:.2f}", delta="장기 체력", delta_color="off")
     with col2: st.metric("평균 S-score", f"{avg_s:.2f}", delta="단기 기세", delta_color="off")
     with col3:
-        if   avg_l > 0 and avg_s > 0: st.success("✅ 매수 신호 (섹터 상승장)")
-        elif avg_l < 0 and avg_s < 0: st.error("🚨 도망챠! (섹터 하락장)")
-        else:                         st.warning("⚠️ 관망 (방향 탐색)")
-    st.caption("💡 L/S 스코어가 모두 양수면 매수, 모두 음수면 도망챠!, 그 외는 관망. 객관적인 숫자를 믿으십시오.")
+        # 💡 [핵심 수술] 0.05 이상이어야만 진짜 상승, -0.05 이하일 때만 진짜 하락으로 팩트 체크!
+        if   avg_l > 0.05 and avg_s > 0.05: st.success("✅ 매수 신호 (섹터 상승장)")
+        elif avg_l < -0.05 and avg_s < -0.05: st.error("🚨 도망챠! (섹터 하락장)")
+        else:                                 st.warning("⚠️ 관망 (방향 탐색)")
+    st.caption("💡 L/S 스코어가 모두 +0.05 이상이면 매수, -0.05 이하면 도망챠!, 그 사이는 잔파도(관망)입니다.")
 else:
     st.error("🚨 데이터 계산 오류 발생!")
 
@@ -204,11 +205,12 @@ with tab1:
             use_container_width=True, height=500
         )
 
-    with sub_c:
+  with sub_c:
         def get_sig_order(row):
-            if row['S-score'] > 0 and row['L-score'] > 0: return 0
-            if row['S-score'] < 0 and row['L-score'] < 0: return 2
-            return 1
+            # 💡 [핵심 수술] 개별 섹터도 0 근처에서 알짱거리는 휩쏘(거짓 신호)를 차단!
+            if row['S-score'] > 0.05 and row['L-score'] > 0.05: return 0
+            if row['S-score'] < -0.05 and row['L-score'] < -0.05: return 2
+            return 1 # 그 사이(-0.05 ~ 0.05)는 무조건 관망(1)으로 처리!
 
         df_card = df_sectors.copy()
         df_card['_o'] = df_card.apply(get_sig_order, axis=1)
@@ -384,3 +386,4 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
+

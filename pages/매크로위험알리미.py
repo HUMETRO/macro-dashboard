@@ -92,8 +92,9 @@ def get_macro_weather():
     
     today = df.iloc[-1]
     
-    # 감점 로직 (100점 만점)
-    pen_vix = max(0, today['^VIX'] - 25) * 1.0
+  # 💡 [정밀 튜닝 완료] 감점 로직 (제자님의 아이디어 반영: VIX 기준 강화!)
+    # VIX 20부터 감점이 시작되고, 페널티 가중치(1.5)를 늘려 더 예민하게 반응합니다!
+    pen_vix = max(0, today['^VIX'] - 20) * 1.5 
     pen_ovx = max(0, today['^OVX'] - 35) * 1.2
     pen_spread = 20 if today['Spread'] < -0.5 else 0
     pen_hyg = 20 if today['HYG'] < today['HYG_MA50'] else 0  
@@ -108,9 +109,9 @@ def get_macro_weather():
     elif score >= 50: weather, emoji, color = "흐림 (비중 조절 및 관망)", "🌤️", "#f59e0b"
     else: weather, emoji, color = "태풍 경보 (현금/SGOV 대피 권장!)", "⛈️", "#ef4444"
 
-    # 💡 [핵심 수술] 6개 지표 모두 "수치"와 "상태(색상)"를 통일감 있게 정리합니다!
+    # 💡 [핵심 수술] VIX가 20 이상이면 얄짤없이 "위험"으로 빨간불을 켭니다!
     details = {
-        "VIX": {"val": f"{today['^VIX']:.1f}", "stat": "위험" if pen_vix > 0 else "안전", "col": "#ef4444" if pen_vix > 0 else "#10b981"},
+        "VIX": {"val": f"{today['^VIX']:.1f}", "stat": "위험" if today['^VIX'] >= 20 else "안전", "col": "#ef4444" if today['^VIX'] >= 20 else "#10b981"},
         "OVX": {"val": f"{today['^OVX']:.1f}", "stat": "위험" if pen_ovx > 0 else "안전", "col": "#ef4444" if pen_ovx > 0 else "#10b981"},
         "Spread": {"val": f"{today['Spread']:.2f}%", "stat": "위험" if pen_spread > 0 else "안전", "col": "#ef4444" if pen_spread > 0 else "#10b981"},
         "HYG": {"val": f"${today['HYG']:.2f}", "stat": "위험" if pen_hyg > 0 else "안전", "col": "#ef4444" if pen_hyg > 0 else "#10b981"},
@@ -387,4 +388,5 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
+
 

@@ -4,6 +4,7 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+import yfinance as yf  # 💡 [NEW] 매크로 데이터를 가져오기 위해 추가!
 
 # [1] 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +12,7 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-# [2] 부품 로드
+# [2] 부품 로드 (제자님의 기존 로직 100% 보존)
 try:
     from data_fetcher import get_all_market_data
     from calculations import calculate_sector_scores, calculate_individual_metrics, calculate_core_sector_scores
@@ -19,9 +20,9 @@ except ImportError as e:
     st.error(f"🚨 부품 로딩 실패! (에러: {e})")
     st.stop()
 
-st.set_page_config(page_title="매크로 위험알리미", page_icon="📊", layout="wide")
+st.set_page_config(page_title="매크로 & 섹터 위험알리미", page_icon="📊", layout="wide")
 
-# 🎨 [디자인 교체] 카드 공통 스타일 (흰색 배제, 시인성 극대화)
+# 🎨 [디자인 교체] 카드 공통 스타일
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
@@ -41,7 +42,17 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     justify-content: center;
 }
 
-/* 🎨 신호별 포인트 컬러 (글자색 진하게 고정) */
+/* ── 매크로 날씨 전용 카드 ── */
+.macro-card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: white;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* 🎨 신호별 포인트 컬러 */
 .card-buy  { border-left: 10px solid #10b981; background: #ecfdf5; color: #064e3b !important; } 
 .card-wait { border-left: 10px solid #f59e0b; background: #fffbeb; color: #78350f !important; } 
 .card-exit { border-left: 10px solid #ef4444; background: #fef2f2; color: #7f1d1d !important; } 
@@ -57,21 +68,92 @@ html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 매크로경제 위험알리미")
+st.title("📊 매크로 & 섹터 듀얼 위험알리미")
 st.markdown("---")
 
-# [3] 데이터 로딩
+# =====================================================================
+# 🌍 [NEW 1층] 탑다운: 글로벌 매크로 날씨 (스마트 머니 추적기)
+# =====================================================================
+@st.cache_data(ttl=300, show_spinner=False)
+def get_macro_weather():
+    # VIX, OVX, 10년물, 3개월물, 하이일드, 달러인덱스, 경기소비재, 필수소비재
+    tickers = "^VIX ^OVX ^TNX ^IRX HYG DX-Y.NYB XLY XLP"
+    df = yf.download(tickers, period="1y", interval="1d", progress=False)['Close']
+    df = df.ffill().dropna()
+
+    if df.empty: return None
+
+    # 지표 계산
+    df['Spread'] = df['^TNX'] - df['^IRX']
+    df['HYG_MA50'] = df['HYG'].rolling(50).mean()
+    df['DXY_MA20'] = df['DX-Y.NYB'].rolling(20).mean()
+    df['XLY_XLP_Ratio'] = df['XLY'] / df['XLP']
+    df['Ratio_MA50'] = df['XLY_XLP_Ratio'].rolling(50).mean()
+    
+    today = df.iloc[-1]
+    
+    # 감점 로직 (100점 만점)
+    pen_vix = max(0, today['^VIX'] - 25) * 1.0
+    pen_ovx = max(0, today['^OVX'] - 35) * 1.2
+    pen_spread = 20 if today['Spread'] < -0.5 else 0
+    
+    # 🚨 [스마트머니 신규 경보]
+    pen_hyg = 20 if today['HYG'] < today['HYG_MA50'] else 0  # 신용경색
+    pen_dxy = 15 if today['DX-Y.NYB'] > (today['DXY_MA20'] * 1.02) else 0  # 달러 급등
+    pen_ratio = 15 if today['XLY_XLP_Ratio'] < today['Ratio_MA50'] else 0  # 필수소비재 쏠림
+
+    score = 100 - (pen_vix + pen_ovx + pen_spread + pen_hyg + pen_dxy + pen_ratio)
+    score = max(0, min(100, score)) # 0~100점 사이 고정
+
+    # 날씨 판별
+    if score >= 80: weather, emoji, color = "아주 맑음 (레버리지 풀악셀 가능)", "☀️", "#10b981"
+    elif score >= 50: weather, emoji, color = "흐림 (비중 조절 및 관망)", "🌤️", "#f59e0b"
+    else: weather, emoji, color = "태풍 경보 (현금/SGOV 대피 권장!)", "⛈️", "#ef4444"
+
+    details = {
+        "VIX": today['^VIX'], "OVX": today['^OVX'], "Spread": today['Spread'],
+        "HYG_Status": "위험" if pen_hyg > 0 else "안전",
+        "DXY_Status": "위험" if pen_dxy > 0 else "안전",
+        "Ratio_Status": "방어적" if pen_ratio > 0 else "공격적"
+    }
+    return score, weather, emoji, color, details
+
+macro_data = get_macro_weather()
+
+if macro_data:
+    score, weather, emoji, color, details = macro_data
+    st.markdown(f"""
+    <div class="macro-card">
+        <h3 style="margin-top:0; color:white;">🌍 글로벌 매크로 기상청 (탑다운 레이더)</h3>
+        <h1 style="color:{color}; font-size:2.5rem; margin:10px 0;">{emoji} {score:.0f}점 : {weather}</h1>
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:15px; border-top:1px solid rgba(255,255,255,0.2); padding-top:15px;">
+            <div style="margin-right:15px;"><b>VIX(공포):</b> {details['VIX']:.1f}</div>
+            <div style="margin-right:15px;"><b>OVX(원유):</b> {details['OVX']:.1f}</div>
+            <div style="margin-right:15px;"><b>장단기 금리차:</b> {details['Spread']:.2f}%</div>
+            <div style="margin-right:15px;"><b>HYG(정크본드):</b> <span style="color:{'#ef4444' if details['HYG_Status']=='위험' else '#10b981'}">{details['HYG_Status']}</span></div>
+            <div style="margin-right:15px;"><b>달러(유동성):</b> <span style="color:{'#ef4444' if details['DXY_Status']=='위험' else '#10b981'}">{details['DXY_Status']}</span></div>
+            <div><b>스마트머니 흐름:</b> <span style="color:{'#f59e0b' if details['Ratio_Status']=='방어적' else '#10b981'}">{details['Ratio_Status']}</span></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.warning("⏳ 매크로 데이터를 불러오는 중입니다...")
+
+# =====================================================================
+# 🏢 [2층] 바텀업: 섹터 및 개별 종목 (제자님의 기존 로직 완벽 보존)
+# =====================================================================
 @st.cache_data(ttl=300)
 def load_all_data():
     return get_all_market_data()
 
-with st.spinner("⏳ 데이터를 분석 중입니다..."):
+with st.spinner("⏳ 바텀업 데이터를 분석 중입니다..."):
     all_data      = load_all_data()
     df_sectors    = calculate_sector_scores(all_data['sector_etfs'])
     df_individual = calculate_individual_metrics(all_data['individual_stocks'])
     df_core       = calculate_core_sector_scores(all_data['core_sectors'])
 
 # [4] 메인 시장 상태 지표
+st.subheader("🏢 시장 체력 스캐너 (바텀업 레이더)")
 if not df_sectors.empty and 'L-score' in df_sectors.columns:
     col1, col2, col3 = st.columns(3)
     avg_l = df_sectors['L-score'].mean()
@@ -79,9 +161,9 @@ if not df_sectors.empty and 'L-score' in df_sectors.columns:
     with col1: st.metric("평균 L-score", f"{avg_l:.2f}", delta="장기 체력", delta_color="off")
     with col2: st.metric("평균 S-score", f"{avg_s:.2f}", delta="단기 기세", delta_color="off")
     with col3:
-        if   avg_l > 0 and avg_s > 0: st.success("✅ 매수 신호 (상승장)")
-        elif avg_l < 0 and avg_s < 0: st.error("🚨 도망챠! (하락장)")
-        else:                          st.warning("⚠️ 관망 (방향 탐색)")
+        if   avg_l > 0 and avg_s > 0: st.success("✅ 매수 신호 (섹터 상승장)")
+        elif avg_l < 0 and avg_s < 0: st.error("🚨 도망챠! (섹터 하락장)")
+        else:                         st.warning("⚠️ 관망 (방향 탐색)")
     st.caption("💡 L/S 스코어가 모두 양수면 매수, 모두 음수면 도망챠!, 그 외는 관망. 객관적인 숫자를 믿으십시오.")
 else:
     st.error("🚨 데이터 계산 오류 발생!")
@@ -168,36 +250,29 @@ with tab1:
     st.caption("1️⃣ **S-L**: 클수록 최근 자금 유입 가속 중  2️⃣ **미너비니 필터**: S<0이면 최하위 강등  3️⃣ **20일(%)**: 최근 1개월 실제 수익률")
 
 # ══════════════════════════════════════
-# TAB2: 개별 종목 (표와 카드 모두 아이콘 100% 복구 완료)
+# TAB2: 개별 종목
 # ══════════════════════════════════════
 with tab2:
     st.subheader("💹 개별 종목 추적")
     sub_t2, sub_c2 = st.tabs(["📑 테이블 뷰", "🎴 카드 뷰"])
 
-    # 💡 [핵심 해결 로직] 표와 카드에 공통으로 아이콘을 박아넣습니다.
     df_display = df_individual.copy()
     
-    # 💡 [핵심 해결 로직] M7 등 개별종목 맞춤형 자산군 분류
     def add_asset_icon(tick):
-        # 🟥 레버리지 및 고변동성
         if tick in ['TQQQ', 'SOXL', 'UPRO', 'QLD', 'SSO', 'TECL', 'FNGU', 'BULZ', 'NVDL', 'CONL']: 
             return f"🟥 {tick}"
-        # 🟩 코어 우량주 (M7 및 주요 ETF)
         elif tick in ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA', 'SPY', 'QQQ', 'DIA']: 
             return f"🟩 {tick}"
-        # 🟨 위성 자산 (기타 개별주)
         else: 
             return f"🟨 {tick}"
         
     df_display['티커_아이콘'] = df_display['티커'].apply(add_asset_icon)
     
-    # 💡 [음영 에러 방어] 빈칸(NaN)이 있으면 색칠 로직이 깨지므로 0으로 꽉꽉 채웁니다.
     num_cols = ['연초대비','high대비','200대비','전일대비','52저대비']
     for col in num_cols:
         df_display[col] = pd.to_numeric(df_display[col], errors='coerce').fillna(0)
 
     with sub_t2:
-        # 테이블 컬럼 예쁘게 재배치
         cols_order = ['티커_아이콘', '현재가', '연초대비', 'high대비', '200대비', '전일대비', '52저대비']
         df_table = df_display[cols_order].rename(columns={'티커_아이콘': '티커'})
         
@@ -224,7 +299,7 @@ with tab2:
             ma200 = row.get('200대비', 0)
             prev  = row.get('전일대비', 0)
             high  = row.get('high대비', 0)
-            ticker_with_icon = row['티커_아이콘'] # 🟥 TQQQ 형태로 이미 완성됨
+            ticker_with_icon = row['티커_아이콘']
 
             css = "card-buy" if ytd > 0 else ("card-exit" if ytd < 0 else "card-wait")
             sig_txt = "✅ 매수 신호" if ytd > 0 else ("🚨 도망챠" if ytd < 0 else "⚠️ 관망")
@@ -309,4 +384,3 @@ if selected:
         margin=dict(l=10, r=10, t=50, b=10)
     )
     st.plotly_chart(fig, use_container_width=True)
-

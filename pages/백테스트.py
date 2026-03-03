@@ -87,7 +87,6 @@ def calculate_signals(df, ticker):
     df = df.copy()
     is_lev = ticker in ["TQQQ", "QLD"]
     
-    # 💡 [에러 방어] 만약 데이터가 비어있다면 에러 없이 빈 칸 반환
     if df.empty:
         df['신호'] = pd.Series(dtype='object')
         df['CMS'] = pd.Series(dtype='float64')
@@ -101,25 +100,28 @@ def calculate_signals(df, ticker):
         cms = 100 - pen
         v_spike = v / v5 > 1.25 if v5 > 0 else False
 
-        # 🚨 1순위: 200일선 붕괴 & 공포 극대화 (가장 먼저 현금 대피)
+        # 💡 [핵심 튜닝] 종목의 무거움에 맞춘 '맞춤형 역발상 그물망'
+        # 레버리지는 -15% 폭락 시 줍고, SPY/QQQ는 -5%만 빠져도 줍도록 세팅!
+        oversold_target = (m200 * 0.85) if is_lev else (m200 * 0.95)
+
+        # 1순위: 200일선 붕괴 & 공포 극대화 (SGOV로 전액 대피)
         if c < m200 and cms < 40: 
             return '🔴철수(Red)', cms
 
-        # 🔥 2순위: 역발상 매수 (순서를 끌어올림!)
-        if c < (m200 * 0.90) and cms >= 40: 
+        # 2순위: 맞춤형 역발상 매수
+        if c < oversold_target and cms >= 40: 
             return '🔥역발상매수', cms
 
-        # ⚠️ 3순위: 일반적인 하락 트렌드 경보
+        # 3순위: 트렌드 경보
         if is_lev:
             if c < m20 or v_spike: return '⚠️터보경보(Turbo)', cms
         else:
             if c < m50 or v_spike: return '🟡조기경보(Yellow)', cms
 
-        # 🟢 4순위: 평화로운 상승장 및 관망
+        # 4순위: 평화로운 상승장
         if cms >= 55: return '🟢매수(Green)', cms
         return '🟡관망(Yellow)', cms
 
-    # 💡 [핵심 해결] KeyError를 원천 차단하는 가장 안전한 열(Column) 할당 방식
     df[['신호', 'CMS']] = df.apply(get_status, axis=1, result_type='expand')
     return df
     
@@ -127,6 +129,10 @@ def calc_performance(df, ticker, start_year):
     df = df[df.index >= f"{start_year}-01-01"].copy()
     df['daily_ret'] = df['Close'].pct_change().fillna(0).clip(-0.99, 5.0)
     is_lev = ticker in ["TQQQ", "QLD"]
+    
+    # 💡 [SGOV 복사기 탑재] 현금 파킹 시 연 4.5% 이자를 매일매일 물어옵니다!
+    sgov_daily_yield = 0.045 / 252 
+
     def get_exp(sig):
         if sig == '🟢매수(Green)': return 1.0
         if sig == '⚠️터보경보(Turbo)': return 0.2 if is_lev else 0.4
@@ -134,18 +140,33 @@ def calc_performance(df, ticker, start_year):
         if sig == '🟡관망(Yellow)': return 0.7
         if sig == '🔥역발상매수': return 0.8
         return 0.0
+        
     df['base_exp'] = df['신호'].apply(get_exp).shift(1).fillna(0)
-    final_exp, cur_cum, max_cum = [], 1.0, 1.0
+    
+    # 누적 수익률을 정확히 담을 리스트 세팅
+    final_exp, cum_strat_list, cur_cum, max_cum = [], [], 1.0, 1.0
+    
     for i in range(len(df)):
-        exp, d_ret = df['base_exp'].iloc[i], df['daily_ret'].iloc[i]
+        exp = df['base_exp'].iloc[i]
+        d_ret = df['daily_ret'].iloc[i]
         cost = 0.002 if i > 0 and exp != df['base_exp'].iloc[i-1] else 0
-        temp_cum = cur_cum * (1 + (d_ret * exp) - cost)
-        dd = (temp_cum / max_cum) - 1
-        actual_exp = exp * 0.3 if dd < -0.08 else exp
-        cur_cum *= (1 + (d_ret * actual_exp) - (cost if actual_exp > 0 else 0))
+        
+        # 🛡️ [숨겨진 브레이크 제거] dd < -0.08 일 때 강제로 비중 깎던 악성 코드 영구 삭제!
+        actual_exp = exp 
+        
+        # 주식 안 산 비중(현금)은 SGOV 무위험 이자 수익으로 변신
+        cash_weight = 1.0 - actual_exp
+        actual_sgov_ret = cash_weight * sgov_daily_yield
+        
+        # 주식 수익 + SGOV 이자 - 거래 수수료 (100% 팩트 복리 연산)
+        cur_cum *= (1 + (d_ret * actual_exp) + actual_sgov_ret - cost)
         if cur_cum > max_cum: max_cum = cur_cum
+        
         final_exp.append(actual_exp)
-    df['cum_strat'] = (1 + (df['daily_ret'] * pd.Series(final_exp, index=df.index))).cumprod()
+        cum_strat_list.append(cur_cum)  
+        
+    # 벡터 덮어쓰기 오류 수정: 반복문에서 정확히 계산한 값을 그대로 대입
+    df['cum_strat'] = cum_strat_list
     df['cum_bah'] = (1 + df['daily_ret']).cumprod()
     df['dd_strat'] = (df['cum_strat'] / df['cum_strat'].cummax() - 1) * 100
     df['dd_bah'] = (df['cum_bah'] / df['cum_bah'].cummax() - 1) * 100
